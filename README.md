@@ -1,9 +1,9 @@
-# PennTurbo Knowledgegraph API #
+# SustainKG API #
 
-REST API server for communication with resources produced by the knolwedgegraph Pipelines
+REST API server for communication between SustainKG [front end repository](https://github.com/greenguy33/sustainKG) and backend database server.
 
 ## Installation ##
-knowledgegraph-api is a Scala project that can either be run locally through SBT (Scala Build Tool), or run in a docker container.
+A Scala project that can either be run locally through SBT (Scala Build Tool), or run in a docker container.
 
 ### Requirements ###
 #### Local
@@ -27,7 +27,7 @@ Copy `turboAPI.properties.template` to `turboAPI.properties`.  Update passwords 
 
 ### Local Build & Run ###
 ```sh
-$ cd knowledgegraph-api
+$ cd sustainKG-API
 $ sbt
 > jetty:start
 ```
@@ -45,30 +45,3 @@ docker-compose up
 ```
 
 This runs `sbt ~"jetty:start"` in the context of a docker container.  May take several minutes to compile.
-
-## General Use ##
-
-For free text lookup, send POST JSON to "http://localhost:8080/medications/findOrderNamesFromInputString"
-
-Example input for free text lookup:
-
-    {"searchTerm":"analgesic"}
-
-For URI lookup, send POST JSON to "http://localhost:8080/medications/findOrderNamesFromInputURI"
-
-    {"searchTerm":"http://purl.obolibrary.org/obo/CHEBI_35480"}
-
-Note that when running from SBT the default port is 8080, as a precompiled .jar the default port is 8089.
-
-See dashboardApiDocs.raml for more explicit documentation.
-
-
-## Tests ##
-The integration test suite can be run localy with the command `sbt test` or via docker with the command `docker-compose -f docker-compose-int-test.yml up`.
-
-See [ScalaTest documentation](http://www.scalatest.org/user_guide/using_scalatest_with_sbt) for details.
-
-- JUnit test results will be located in `target/test-reports/*.xml`
-- HTML test results will be located in `target/test-reports/html/*`
-
-
