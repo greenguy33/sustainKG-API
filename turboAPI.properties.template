@@ -1,0 +1,7 @@
+# triplestore URL
+serviceURL = http://graphdb.ics.uci.edu:7200/
+# username/password for triplestore
+username = my_username
+password = my_password
+# repository names
+repoName = my_repo
