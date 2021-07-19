@@ -25,23 +25,81 @@ Copy `turboAPI.properties.template` to `turboAPI.properties`.  Update passwords 
 
 ## Build & Run ##
 
+## From Precompiled .jar##
+SBT assembly can be used to create a precompiled jar file:
+```
+$ sbt
+> assembly
+```
+The .jar can then be started with the command `java -jar [jar_name]`. It shoud lbe placed in the same directory as the .properties file. API will be accessible on port 8089.
+
 ### Local Build & Run ###
 ```sh
 $ cd sustainKG-API
 $ sbt
 > jetty:start
 ```
+API will be accessible on port 8080.
 
 ### Docker ###
 #### Build
 ```
 docker-compose build
 ```
-
-
 #### Run
 ```
 docker-compose up
 ```
 
 This runs `sbt ~"jetty:start"` in the context of a docker container.  May take several minutes to compile.
+
+## Commands
+
+The API currently supports the following commands:
+
+POST to `/getUserGraph`: accepts a username as a JSON formatted string and returns JSON graph data of that user's graph
+
+Example body: 
+
+```
+{
+    "user": "some_user"
+}
+```
+
+POST to `/postUserGraph`: accepts a username and JSON graph data and adds the new graph to the current user's existing graph in the database (in the future it should probably be modified to overwrite the user graph with the new graph)
+
+Example body:
+
+```
+{
+    "user": "some_user",
+    "nodes": [
+        {
+            "type": "node",
+            "id": "0",
+            "label": "Concept",
+            "properties": {
+                "name": "Innovation"
+            }
+        },
+        {
+            "type": "node",
+            "id": "1",
+            "label": "Concept",
+            "properties": {
+                "name": "Globalization"
+            }
+        }],
+    "links": [
+        {
+            "type": "link",
+            "id": "0",
+            "label": "benefits",
+            "start": "0",
+            "end": "1",
+            "properties": {}
+        }
+    ]
+}
+```
