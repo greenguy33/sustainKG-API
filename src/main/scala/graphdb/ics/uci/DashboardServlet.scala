@@ -118,10 +118,10 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
           if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
           else
           {
-              /*try
-              {*/
+              try
+              {
                   graphDB.postUserGraph(userName, nodes, links, cxn)
-              /*}
+              }
               catch
               {
                   case e: RuntimeException => 
@@ -129,7 +129,7 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
                       println(e.toString)
                       InternalServerError(Map("message" -> "There was a problem posting results to the triplestore."))
                   }
-              }*/
+              }
           }
       } 
       catch 

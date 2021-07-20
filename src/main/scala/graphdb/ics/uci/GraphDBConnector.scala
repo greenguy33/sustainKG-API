@@ -72,7 +72,7 @@ class GraphDBConnector
             val linkSuffix = row(1).split("http://sustainkg.org/")(1)
             val startId = classIdMap(row(0))
             val endId = classIdMap(row(2))
-            linkString += "{'type':'link','id':'"+linkCount.toString+"','label':'"+linkSuffix+"','start':'"+startId+"', 'end':'"+endId+"','properties':{}},\n"
+            linkString += "{'type':'link','id':'"+linkCount.toString+"','label':'"+linkSuffix+"','source':'"+startId+"', 'target':'"+endId+"','properties':{}},\n"
             linkCount = linkCount + 1
         }
         // remove last comma
@@ -99,8 +99,8 @@ class GraphDBConnector
         {
             val asMap = map.asInstanceOf[Map[String,Object]]
             val linkLabel = asMap("label").asInstanceOf[String]
-            val startNode = asMap("start").asInstanceOf[String]
-            val endNode = asMap("end").asInstanceOf[String]
+            val startNode = asMap("source").asInstanceOf[String]
+            val endNode = asMap("target").asInstanceOf[String]
             rdf += "<https://en.wikipedia.org/wiki/"+classIdMap(startNode)+"> <http://sustainkg.org/"+linkLabel+"> <https://en.wikipedia.org/wiki/"+classIdMap(endNode)+"> . \n"
         }
         rdf
