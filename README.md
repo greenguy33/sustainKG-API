@@ -96,8 +96,8 @@ Example body:
             "type": "link",
             "id": "0",
             "label": "benefits",
-            "start": "0",
-            "end": "1",
+            "source": "0",
+            "target": "1",
             "properties": {}
         }
     ]
