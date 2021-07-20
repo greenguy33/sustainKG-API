@@ -1,9 +1,9 @@
-# PennTurbo Knowledgegraph API #
+# SustainKG API #
 
-REST API server for communication with resources produced by the knolwedgegraph Pipelines
+REST API server for communication between SustainKG [front end repository](https://github.com/greenguy33/sustainKG) and backend database server.
 
 ## Installation ##
-knowledgegraph-api is a Scala project that can either be run locally through SBT (Scala Build Tool), or run in a docker container.
+A Scala project that can either be run locally through SBT (Scala Build Tool), or run in a docker container.
 
 ### Requirements ###
 #### Local
@@ -25,20 +25,27 @@ Copy `turboAPI.properties.template` to `turboAPI.properties`.  Update passwords 
 
 ## Build & Run ##
 
+## From Precompiled .jar##
+SBT assembly can be used to create a precompiled jar file:
+```
+$ sbt
+> assembly
+```
+The .jar can then be started with the command `java -jar [jar_name]`. It shoud lbe placed in the same directory as the .properties file. API will be accessible on port 8089.
+
 ### Local Build & Run ###
 ```sh
-$ cd knowledgegraph-api
+$ cd sustainKG-API
 $ sbt
 > jetty:start
 ```
+API will be accessible on port 8080.
 
 ### Docker ###
 #### Build
 ```
 docker-compose build
 ```
-
-
 #### Run
 ```
 docker-compose up
@@ -46,29 +53,53 @@ docker-compose up
 
 This runs `sbt ~"jetty:start"` in the context of a docker container.  May take several minutes to compile.
 
-## General Use ##
+## Commands
 
-For free text lookup, send POST JSON to "http://localhost:8080/medications/findOrderNamesFromInputString"
+The API currently supports the following commands:
 
-Example input for free text lookup:
+POST to `/getUserGraph`: accepts a username as a JSON formatted string and returns JSON graph data of that user's graph
 
-    {"searchTerm":"analgesic"}
+Example body: 
 
-For URI lookup, send POST JSON to "http://localhost:8080/medications/findOrderNamesFromInputURI"
+```
+{
+    "user": "some_user"
+}
+```
 
-    {"searchTerm":"http://purl.obolibrary.org/obo/CHEBI_35480"}
+POST to `/postUserGraph`: accepts a username and JSON graph data and adds the new graph to the current user's existing graph in the database (in the future it should probably be modified to overwrite the user graph with the new graph)
 
-Note that when running from SBT the default port is 8080, as a precompiled .jar the default port is 8089.
+Example body:
 
-See dashboardApiDocs.raml for more explicit documentation.
-
-
-## Tests ##
-The integration test suite can be run localy with the command `sbt test` or via docker with the command `docker-compose -f docker-compose-int-test.yml up`.
-
-See [ScalaTest documentation](http://www.scalatest.org/user_guide/using_scalatest_with_sbt) for details.
-
-- JUnit test results will be located in `target/test-reports/*.xml`
-- HTML test results will be located in `target/test-reports/html/*`
-
-
+```
+{
+    "user": "some_user",
+    "nodes": [
+        {
+            "type": "node",
+            "id": "0",
+            "label": "Concept",
+            "properties": {
+                "name": "Innovation"
+            }
+        },
+        {
+            "type": "node",
+            "id": "1",
+            "label": "Concept",
+            "properties": {
+                "name": "Globalization"
+            }
+        }],
+    "links": [
+        {
+            "type": "link",
+            "id": "0",
+            "label": "benefits",
+            "source": "0",
+            "target": "1",
+            "properties": {}
+        }
+    ]
+}
+```
