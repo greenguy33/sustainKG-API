@@ -57,13 +57,14 @@ This runs `sbt ~"jetty:start"` in the context of a docker container.  May take s
 
 The API currently supports the following commands:
 
-POST to `/getUserGraph`: accepts a username as a JSON formatted string and returns JSON graph data of that user's graph
+POST to `/getUserGraph`: accepts a username/password as a JSON formatted string and returns JSON graph data of that user's graph
 
 Example body: 
 
 ```
 {
-    "user": "some_user"
+    "user": "some_user",
+    "password": "my_password"
 }
 ```
 
