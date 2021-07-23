@@ -3,7 +3,7 @@
 REST API server for communication between SustainKG [front end repository](https://github.com/greenguy33/sustainKG) and backend database server. This software connects to an instance of the database [Ontotext GraphDB](https://www.ontotext.com/products/graphdb/) where the data is stored.
 
 ## Installation ##
-A Scala project that can either be run locally through SBT (Scala Build Tool), or run in a docker container.
+A Scala project that can be run locally through SBT (Scala Build Tool), as a precompiled .jar, or in a docker container.
 
 ### Requirements ###
 #### Local
@@ -25,7 +25,7 @@ Copy `turboAPI.properties.template` to `turboAPI.properties`.  Update passwords 
 
 ## Build & Run ##
 
-## From Precompiled .jar##
+## From Precompiled .jar ##
 SBT assembly can be used to create a precompiled jar file:
 ```
 $ sbt
