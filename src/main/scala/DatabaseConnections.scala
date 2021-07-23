@@ -29,5 +29,30 @@ object GraphDbConnection
         this.dbRepoManager = dbRepoManager
     }
     
-    def getDbRepoManager(): RemoteRepositoryManager = dbRepoManager
+    def getDbRepoManager(): RemoteRepositoryManager = wp_dbRepoManager
+
+    var wp_dbCxn: RepositoryConnection = null
+    var wp_dbRepo: Repository = null
+    var wp_dbRepoManager: RemoteRepositoryManager = null
+
+    def setWpDbConnection(wp_dbCxn: RepositoryConnection)
+    {
+        this.wp_dbCxn = wp_dbCxn
+    }
+    
+    def getWpDbConnection(): RepositoryConnection = wp_dbCxn
+    
+    def setWpDbRepo(wp_dbRepo: Repository)
+    {
+        this.wp_dbRepo = wp_dbRepo
+    }
+    
+    def getWpDbRepo(): Repository = wp_dbRepo
+    
+    def setWpDbRepoManager(wp_dbRepoManager: RemoteRepositoryManager)
+    {
+        this.wp_dbRepoManager = wp_dbRepoManager
+    }
+    
+    def getWpDbRepoManager(): RemoteRepositoryManager = wp_dbRepoManager
 }

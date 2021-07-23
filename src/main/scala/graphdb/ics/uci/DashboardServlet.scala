@@ -45,13 +45,14 @@ import org.apache.solr.client.solrj.impl.HttpSolrClient
 
 import org.neo4j.driver.exceptions.ServiceUnavailableException
 
-case class UserName(user: String)
+case class UserName(user: String, password: String)
 case class GraphInput(user: String, nodes: Array[Object], links: Array[Object])
 
 class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with DashboardProperties
 {
   val graphDB: GraphDBConnector = new GraphDBConnector
   val cxn = GraphDbConnection.getDbConnection()
+  val wpCxn = GraphDbConnection.getWpDbConnection()
   val logger = LoggerFactory.getLogger("turboAPIlogger")
 
   protected implicit val jsonFormats: Formats = DefaultFormats
@@ -69,17 +70,24 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
           logger.info("received: " + userInput)
           val extractedResult = parse(userInput).extract[UserName]
           val userName = extractedResult.user
+          val pw = extractedResult.password
           logger.info("getting graph for user: " + userName)
 
           if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
+          else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
           else
           {
               try
               {
-                  val res = graphDB.getUserGraph(userName, cxn)
-                  if (res.size == 0)
+                  val res = graphDB.getUserGraph(userName, pw, cxn)
+                  if (res == "Login failed")
                   {
-                      val noContentMessage = "Your input of \"" + userName + "\" returned no matches."
+                      val noContentMessage = "Login failed for user \"" + userName + "\""
+                      NoContent(Map("message" -> noContentMessage))
+                  }
+                  else if (res.size == 0)
+                  {
+                      val noContentMessage = "No graph present for \"" + userName + "\""
                       NoContent(Map("message" -> noContentMessage))
                   }
                   else res
@@ -137,6 +145,66 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
           case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
           case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
           case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
+      }
+  }
+
+  post("/createNewUser")
+  {
+      logger.info("Received a new user request")
+      try 
+      { 
+          val userInput = request.body
+          val extractedResult = parse(userInput).extract[UserName]
+          val userName = extractedResult.user
+          val pw = extractedResult.password
+
+          if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
+          else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
+          else
+          {
+              try
+              {
+                  val res = graphDB.createNewUser(userName, pw, cxn)
+                  if (res == "User exists")
+                  {
+                      val noContentMessage = "User \"" + userName + "\" already exists"
+                      NoContent(Map("message" -> noContentMessage))
+                  }
+                  else Ok(Map("message" -> res))
+              }
+              catch
+              {
+                  case e: RuntimeException => 
+                  {
+                      println(e.toString)
+                      InternalServerError(Map("message" -> "There was a problem retrieving results from the triplestore."))
+                  }
+              }
+          }
+      } 
+      catch 
+      {
+          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
+          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
+          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
+      }
+  }
+
+  get("/getAllWikipediaArticles")
+  {
+      logger.info("Received a get request")
+      try
+      {
+          val res = graphDB.getAllWikipediaArticles(wpCxn)
+          res
+      }
+      catch
+      {
+          case e: RuntimeException => 
+          {
+              println(e.toString)
+              InternalServerError(Map("message" -> "There was a problem retrieving results from the triplestore."))
+          }
       }
   }
 }

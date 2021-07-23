@@ -24,29 +24,72 @@ class GraphDBConnector
 {
     val logger = LoggerFactory.getLogger("turboAPIlogger")
 
-    def getUserGraph(userName: String, cxn: RepositoryConnection): String =
+    def getUserGraph(userName: String, password: String, cxn: RepositoryConnection): String =
     {
-        val query = s"select * where { graph <http://sustainkg.org/$userName> { ?s ?p ?o . }}"
-        val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
-        val results = new ArrayBuffer[ArrayBuffer[String]]
-        while (tupleQueryResult.hasNext())
+        val safeUser = userName.replace(" ","").replace("<","").replace(">","")
+        if (checkUserCredentials(safeUser, password, cxn))
         {
-            val bindingset: BindingSet = tupleQueryResult.next()
-            val thisResult = ArrayBuffer(bindingset.getValue("s").toString, bindingset.getValue("p").toString, bindingset.getValue("o").toString)
-            results += thisResult
+            val query = s"select * where { graph <http://sustainkg.org/$safeUser> { ?s ?p ?o . }}"
+            val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
+            val results = new ArrayBuffer[ArrayBuffer[String]]
+            while (tupleQueryResult.hasNext())
+            {
+                val bindingset: BindingSet = tupleQueryResult.next()
+                val thisResult = ArrayBuffer(bindingset.getValue("s").toString, bindingset.getValue("p").toString, bindingset.getValue("o").toString)
+                results += thisResult
+            }
+            sparqlResToJson(results, safeUser)
         }
-        sparqlResToJson(results, userName)
+        else "Login failed"
     }
 
     def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
     {
+        val safeUser = userName.replace(" ","").replace("<","").replace(">","")
+        deleteUserGraph(safeUser, cxn)
         val rdf = jsonToRdf(nodes, links)
-        val userGraph = "http://sustainkg.org/" + userName.replace(" ","").replace("<","").replace(">","")
+        val userGraph = "http://sustainkg.org/" + safeUser
         val query = s"insert data { graph <$userGraph> { $rdf }}"
         cxn.begin()
         val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
         tupleUpdate.execute()
         cxn.commit()
+    }
+
+    def deleteUserGraph(userName: String, cxn: RepositoryConnection)
+    {
+        val userGraph = "<http://sustainkg.org/" + userName + ">"
+        val query = "CLEAR GRAPH " + userGraph
+        cxn.begin()
+        val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
+        tupleUpdate.execute()
+        cxn.commit()
+    }
+
+    def checkUserCredentials(userName: String, password: String, cxn: RepositoryConnection): Boolean =
+    {
+        val userGraph = "<http://sustainkg.org/" + userName + ">"
+        val checkUser = s"ASK {$userGraph <http://sustainkg.org/security> '$password' . }"
+        val boolQueryResult: BooleanQuery = cxn.prepareBooleanQuery(QueryLanguage.SPARQL, checkUser)
+        return boolQueryResult.evaluate()
+    }
+
+    def createNewUser(userName: String, password: String, cxn: RepositoryConnection): String =
+    {
+        val safeUser = userName.replace(" ","").replace("<","").replace(">","")
+        val userGraph = "<http://sustainkg.org/" + safeUser + ">"
+        val checkUser = s"ASK {$userGraph <http://sustainkg.org/security> ?pw . }"
+        val boolQueryResult: BooleanQuery = cxn.prepareBooleanQuery(QueryLanguage.SPARQL, checkUser)
+        if (boolQueryResult.evaluate()) return "User exists"
+        else
+        {
+            val query = s"insert data { $userGraph <http://sustainkg.org/security> '$password' . }"
+            cxn.begin()
+            val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
+            tupleUpdate.execute()
+            cxn.commit()
+            "User created"
+        }
     }
 
     def sparqlResToJson(res: ArrayBuffer[ArrayBuffer[String]], user: String): String =
@@ -104,5 +147,21 @@ class GraphDBConnector
             rdf += "<https://en.wikipedia.org/wiki/"+classIdMap(startNode)+"> <http://sustainkg.org/"+linkLabel+"> <https://en.wikipedia.org/wiki/"+classIdMap(endNode)+"> . \n"
         }
         rdf
+    }
+
+    def getAllWikipediaArticles(cxn: RepositoryConnection): String =
+    {
+        val query = s"select * where { ?s <http://sustainkg.org/type> <http://sustainkg.org/article> . }"
+        val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
+        var results = """{
+                          "articles": [""" 
+        while (tupleQueryResult.hasNext())
+        {
+            val thisResult: String = tupleQueryResult.next().getValue("s").toString
+            results += s"""{"article":"$thisResult"},\n"""
+        }
+        results = results.patch(results.lastIndexOf(','), "", 1)
+        results += "\n]\n}"
+        results
     }
 }
