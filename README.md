@@ -104,3 +104,35 @@ Example body:
     ]
 }
 ```
+
+POST to `/createNewUser`: accepts a username and password and creates a new user with an empty graph, if the username does not already exist. Note that a Code 200 will be returned if the request is accepted and a 204 code will be returned if the user already exists.
+
+Example body:
+```
+{
+    "user": "some_user_2",
+    "password" : "my_password"
+}
+```
+
+GET to `/getAllWikipediaArticles`: No body; returns all Wikipedia articles currently listed in the database.
+
+Example response:
+```
+{
+    "articles": [
+        {
+            "article": "https://en.wikipedia.org/wiki/Anarchism"
+        },
+        {
+            "article": "https://en.wikipedia.org/wiki/Autism"
+        },
+        {
+            "article": "https://en.wikipedia.org/wiki/Albedo"
+        },
+        {
+            "article": "https://en.wikipedia.org/wiki/A"
+        }
+    ]
+}
+```
