@@ -1,6 +1,6 @@
 # SustainKG API #
 
-REST API server for communication between SustainKG [front end repository](https://github.com/greenguy33/sustainKG) and backend database server.
+REST API server for communication between SustainKG [front end repository](https://github.com/greenguy33/sustainKG) and backend database server. This software connects to an instance of the database [Ontotext GraphDB](https://www.ontotext.com/products/graphdb/) where the data is stored.
 
 ## Installation ##
 A Scala project that can either be run locally through SBT (Scala Build Tool), or run in a docker container.
@@ -68,7 +68,7 @@ Example body:
 }
 ```
 
-POST to `/postUserGraph`: accepts a username and JSON graph data and adds the new graph to the current user's existing graph in the database (in the future it should probably be modified to overwrite the user graph with the new graph)
+POST to `/postUserGraph`: accepts a username and JSON graph data and overwrites the user's existing graph with the new graph in the database.
 
 Example body:
 
