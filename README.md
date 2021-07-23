@@ -20,7 +20,7 @@ A Scala project that can be run locally through SBT (Scala Build Tool), as a pre
     - **Runtime Memory**: (Mac and Windows only) If using **Windows** or **Mac**, we recommend docker VM to be configured with at least 6GB of runtime memory ([Mac configuration](https://docs.docker.com/docker-for-mac/#advanced), [Windows configuration](https://docs.docker.com/docker-for-windows/#advanced)).  By default, docker VM on Windows or Mac starts with 2G runtime memory.
 
 ### Configuration ###
-Copy `turboAPI.properties.template` to `turboAPI.properties`.  Update passwords as necessary.
+Copy `turboAPI.properties.template` to `turboAPI.properties`.  Update passwords and repository names as necessary.
 
 
 ## Build & Run ##
