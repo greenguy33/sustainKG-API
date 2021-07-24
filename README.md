@@ -136,3 +136,9 @@ Example response:
     ]
 }
 ```
+To fit in the RDF database, the following changes are made to the Wikipedia URLs:
+" -> '
+% -> _percent
+^ -> -
+\ -> -
+` -> -
