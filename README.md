@@ -115,30 +115,15 @@ Example body:
 }
 ```
 
-GET to `/getAllWikipediaArticles`: No body; returns all Wikipedia articles currently listed in the database.
+GET to `/getAllWikipediaArticles`: No body; returns a 7z file with all Wikipedia articles as of the last update.
 
-Example response:
-```
-{
-    "articles": [
-        {
-            "article": "https://en.wikipedia.org/wiki/Anarchism"
-        },
-        {
-            "article": "https://en.wikipedia.org/wiki/Autism"
-        },
-        {
-            "article": "https://en.wikipedia.org/wiki/Albedo"
-        },
-        {
-            "article": "https://en.wikipedia.org/wiki/A"
-        }
-    ]
-}
-```
 To fit in the RDF database, the following changes are made to the Wikipedia URLs:
 " -> '
+
 % -> _percent
+
 ^ -> -
+
 \ -> -
+
 ` -> -
