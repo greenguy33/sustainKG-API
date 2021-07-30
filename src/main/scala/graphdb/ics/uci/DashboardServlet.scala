@@ -116,6 +116,7 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
       try 
       { 
           val userInput = request.body
+          print(userInput)
           val parsedResult = parse(userInput)
           val extractedResult = parsedResult.extract[GraphInput]
           val userName = extractedResult.user
@@ -157,7 +158,8 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
           val extractedResult = parse(userInput).extract[UserName]
           val userName = extractedResult.user
           val pw = extractedResult.password
-
+          print(userInput)
+          
           if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
           else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
           else
@@ -193,18 +195,6 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
   get("/getAllWikipediaArticles")
   {
       logger.info("Received a get request")
-      try
-      {
-          val res = graphDB.getAllWikipediaArticles(wpCxn)
-          res
-      }
-      catch
-      {
-          case e: RuntimeException => 
-          {
-              println(e.toString)
-              InternalServerError(Map("message" -> "There was a problem retrieving results from the triplestore."))
-          }
-      }
+      new File("wiki_articles_list.7z")
   }
 }

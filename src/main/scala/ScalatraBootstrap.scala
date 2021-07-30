@@ -23,40 +23,55 @@ class ScalatraBootstrap extends LifeCycle with DashboardProperties {
       dbR.shutDown()
       dbRm.shutDown()
 
-      val wp_dbRm = GraphDbConnection.getWpDbRepoManager()
+      /*val wp_dbRm = GraphDbConnection.getWpDbRepoManager()
       val wp_dbR = GraphDbConnection.getWpDbRepo()
       val wp_dbCxn = GraphDbConnection.getWpDbConnection()
 
       wp_dbCxn.close()
       wp_dbR.shutDown()
-      wp_dbRm.shutDown()
+      wp_dbRm.shutDown()*/
   }
 
   override def init(context: ServletContext) {
 
     println("connecting to graph db...")
-
-    val dbRepoManager = new RemoteRepositoryManager(getFromProperties("serviceURL"))
-    dbRepoManager.setUsernameAndPassword(getFromProperties("username"), getFromProperties("password"))
+    //val serviceUrl = getFromProperties("serviceURL")
+    val serviceUrl = "http://graphdb.ics.uci.edu:7200/"
+    println("serviceURL: "+ serviceUrl)
+    //val username = getFromProperties("username")
+    val username = "hfreedma"
+    println("username: " + username)
+    //val password = getFromProperties("password")
+    val password = "obibisthebest"
+    //val repoName = getFromProperties("repoName")
+    val repoName = "kg1"
+    println("repository: "+ repoName)
+    val dbRepoManager = new RemoteRepositoryManager(serviceUrl)
+    println("initialized repository manager")
+    dbRepoManager.setUsernameAndPassword(username, password)
+    println("set username and password")
     dbRepoManager.initialize()
-    val dbRepo = dbRepoManager.getRepository(getFromProperties("repoName"))
+    println("authentication successful")
+    val dbRepo = dbRepoManager.getRepository(repoName)
+    println("initialized repository")
     val dbCxn = dbRepo.getConnection()
+    println("initializing connection")
 
-    val wp_dbRepoManager = new RemoteRepositoryManager(getFromProperties("serviceURL"))
+    /*val wp_dbRepoManager = new RemoteRepositoryManager(getFromProperties("serviceURL"))
     wp_dbRepoManager.setUsernameAndPassword(getFromProperties("username"), getFromProperties("password"))
     wp_dbRepoManager.initialize()
     val wp_dbRepo = wp_dbRepoManager.getRepository(getFromProperties("wikiRepoName"))
-    val wp_dbCxn = wp_dbRepo.getConnection()
+    val wp_dbCxn = wp_dbRepo.getConnection()*/
 
     GraphDbConnection.setDbRepoManager(dbRepoManager)
     GraphDbConnection.setDbRepo(dbRepo)
     GraphDbConnection.setDbConnection(dbCxn)
 
-    GraphDbConnection.setWpDbRepoManager(wp_dbRepoManager)
+    /*GraphDbConnection.setWpDbRepoManager(wp_dbRepoManager)
     GraphDbConnection.setWpDbRepo(wp_dbRepo)
-    GraphDbConnection.setWpDbConnection(wp_dbCxn)
+    GraphDbConnection.setWpDbConnection(wp_dbCxn)*/
 
-    println("established connection to repository")
+    println("established connection to repository "+ repoName)
     context.mount(new DashboardServlet, "/*")
   	println("""
 

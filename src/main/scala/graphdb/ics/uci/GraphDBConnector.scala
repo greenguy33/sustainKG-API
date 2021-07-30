@@ -151,7 +151,7 @@ class GraphDBConnector
 
     def getAllWikipediaArticles(cxn: RepositoryConnection): String =
     {
-        val query = s"select * where { ?s <http://sustainkg.org/type> <http://sustainkg.org/article> . }"
+        val query = s"select * where { ?s ?p ?o . }"
         val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
         var results = """{
                           "articles": [""" 
