@@ -115,9 +115,13 @@ Example body:
 }
 ```
 
+GET to `/getCollectiveGraph`: No body; returns all graphs in database in JSON format.
+
 GET to `/getAllWikipediaArticles`: No body; returns a 7z file with all Wikipedia articles as of the last update.
 
 To fit in the RDF database, the following changes are made to the Wikipedia URLs:
+
+```
 " -> '
 
 % -> _percent
@@ -127,3 +131,4 @@ To fit in the RDF database, the following changes are made to the Wikipedia URLs
 \ -> -
 
 ` -> -
+```
