@@ -27,7 +27,8 @@ class GraphDBConnector
     def getUserGraph(userName: String, password: String, cxn: RepositoryConnection): String =
     {
         val safeUser = userName.replace(" ","").replace("<","").replace(">","")
-        if (checkUserCredentials(safeUser, password, cxn))
+        val loginResult = checkUserCredentials(safeUser, password, cxn)
+        if (loginResult  == "Login Successful")
         {
             val query = s"select * where { graph <http://sustainkg.org/$safeUser> { ?s ?p ?o . }}"
             val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
@@ -40,7 +41,21 @@ class GraphDBConnector
             }
             sparqlResToJson(results, safeUser)
         }
-        else "Login failed"
+        else loginResult
+    }
+
+    def getCollectiveGraph(cxn: RepositoryConnection): String =
+    {
+        val query = s"select * where { graph ?g { ?s ?p ?o . }}"
+        val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
+        val results = new ArrayBuffer[ArrayBuffer[String]]
+        while (tupleQueryResult.hasNext())
+        {
+            val bindingset: BindingSet = tupleQueryResult.next()
+            val thisResult = ArrayBuffer(bindingset.getValue("s").toString, bindingset.getValue("p").toString, bindingset.getValue("o").toString)
+            results += thisResult
+        }
+        sparqlResToJson(results, "all_users")
     }
 
     def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
@@ -66,12 +81,19 @@ class GraphDBConnector
         cxn.commit()
     }
 
-    def checkUserCredentials(userName: String, password: String, cxn: RepositoryConnection): Boolean =
+    def checkUserCredentials(userName: String, password: String, cxn: RepositoryConnection): String =
     {
         val userGraph = "<http://sustainkg.org/" + userName + ">"
-        val checkUser = s"ASK {$userGraph <http://sustainkg.org/security> '$password' . }"
+        val checkUser = s"ASK {$userGraph <http://sustainkg.org/security> ?pass . }"
         val boolQueryResult: BooleanQuery = cxn.prepareBooleanQuery(QueryLanguage.SPARQL, checkUser)
-        return boolQueryResult.evaluate()
+        if (!boolQueryResult.evaluate()) return "Wrong Username"
+        else
+        {
+            val checkPassword = s"ASK {$userGraph <http://sustainkg.org/security> '$password' . }"
+            val boolQueryResult2: BooleanQuery = cxn.prepareBooleanQuery(QueryLanguage.SPARQL, checkPassword)
+            if (!boolQueryResult2.evaluate()) return "Wrong Password"
+            else return "Login Successful"
+        }
     }
 
     def createNewUser(userName: String, password: String, cxn: RepositoryConnection): String =
@@ -101,6 +123,7 @@ class GraphDBConnector
         var linkCount = 0
         for (row <- res)
         {
+            print(row)
             val classIndices = Array(0,2)
             for (i <- classIndices)
             {
@@ -147,21 +170,5 @@ class GraphDBConnector
             rdf += "<https://en.wikipedia.org/wiki/"+classIdMap(startNode)+"> <http://sustainkg.org/"+linkLabel+"> <https://en.wikipedia.org/wiki/"+classIdMap(endNode)+"> . \n"
         }
         rdf
-    }
-
-    def getAllWikipediaArticles(cxn: RepositoryConnection): String =
-    {
-        val query = s"select * where { ?s ?p ?o . }"
-        val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
-        var results = """{
-                          "articles": [""" 
-        while (tupleQueryResult.hasNext())
-        {
-            val thisResult: String = tupleQueryResult.next().getValue("s").toString
-            results += s"""{"article":"$thisResult"},\n"""
-        }
-        results = results.patch(results.lastIndexOf(','), "", 1)
-        results += "\n]\n}"
-        results
     }
 }

@@ -80,14 +80,14 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
               try
               {
                   val res = graphDB.getUserGraph(userName, pw, cxn)
-                  if (res == "Login failed")
+                  if (res == "Wrong Username")
                   {
-                      val noContentMessage = "Login failed for user \"" + userName + "\""
+                      val noContentMessage = "User \"" + userName + "\" does not exist"
                       NoContent(Map("message" -> noContentMessage))
                   }
-                  else if (res.size == 0)
+                  else if (res == "Wrong Password")
                   {
-                      val noContentMessage = "No graph present for \"" + userName + "\""
+                      val noContentMessage = "Password incorrect for user \"" + userName + "\""
                       NoContent(Map("message" -> noContentMessage))
                   }
                   else res
@@ -107,6 +107,23 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
           case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
           case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
           case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
+      }
+  }
+
+  get("/getCollectiveGraph")
+  {
+      logger.info("Received a get request")
+      try
+      {
+          graphDB.getCollectiveGraph(cxn)
+      }
+      catch
+      {
+          case e: RuntimeException => 
+          {
+              println(e.toString)
+              InternalServerError(Map("message" -> "There was a problem retrieving results from the triplestore."))
+          }
       }
   }
 
