@@ -60,7 +60,6 @@ class GraphDBConnector
 
     def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
     {
-        throw new RuntimeException ("my exception")
         val safeUser = userName.replace(" ","").replace("<","").replace(">","")
         deleteUserGraph(safeUser, cxn)
         val rdf = jsonToRdf(nodes, links)
