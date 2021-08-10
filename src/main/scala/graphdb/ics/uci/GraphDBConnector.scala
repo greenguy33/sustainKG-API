@@ -26,7 +26,7 @@ class GraphDBConnector
 
     def getUserGraph(userName: String, password: String, cxn: RepositoryConnection): String =
     {
-        val safeUser = userName.replace(" ","").replace("<","").replace(">","")
+        val safeUser = userName.replace(" ","_").replace("<","").replace(">","")
         val loginResult = checkUserCredentials(safeUser, password, cxn)
         if (loginResult  == "Login Successful")
         {
@@ -60,7 +60,7 @@ class GraphDBConnector
 
     def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
     {
-        val safeUser = userName.replace(" ","").replace("<","").replace(">","")
+        val safeUser = userName.replace(" ","_").replace("<","").replace(">","")
         deleteUserGraph(safeUser, cxn)
         val rdf = jsonToRdf(nodes, links)
         val userGraph = "http://sustainkg.org/" + safeUser
@@ -98,7 +98,7 @@ class GraphDBConnector
 
     def createNewUser(userName: String, password: String, cxn: RepositoryConnection): String =
     {
-        val safeUser = userName.replace(" ","").replace("<","").replace(">","")
+        val safeUser = userName.replace(" ","_").replace("<","").replace(">","")
         val userGraph = "<http://sustainkg.org/" + safeUser + ">"
         val checkUser = s"ASK {$userGraph <http://sustainkg.org/security> ?pw . }"
         val boolQueryResult: BooleanQuery = cxn.prepareBooleanQuery(QueryLanguage.SPARQL, checkUser)
@@ -129,12 +129,12 @@ class GraphDBConnector
                 if (!classIdMap.contains(row(i)))
                 {
                     classIdMap += row(i) -> classCount
-                    val classSuffix = row(i).split("https://en.wikipedia.org/wiki/")(1)
+                    val classSuffix = row(i).split("https://en.wikipedia.org/wiki/")(1).replaceAll("_", " ")
                     classString += "{'type':'node','id':'"+classCount.toString+"','label':'Concept','properties':{'name':'"+classSuffix+"'}},\n"
                     classCount = classCount + 1
                 }
             }
-            val linkSuffix = row(1).split("http://sustainkg.org/")(1)
+            val linkSuffix = row(1).split("http://sustainkg.org/")(1).replaceAll("_", " ")
             val startId = classIdMap(row(0))
             val endId = classIdMap(row(2))
             linkString += "{'type':'link','id':'"+linkCount.toString+"','label':'"+linkSuffix+"','source':'"+startId+"', 'target':'"+endId+"','properties':{}},\n"
@@ -166,7 +166,7 @@ class GraphDBConnector
             val linkLabel = asMap("label").asInstanceOf[String]
             val startNode = asMap("source").asInstanceOf[String]
             val endNode = asMap("target").asInstanceOf[String]
-            rdf += "<https://en.wikipedia.org/wiki/"+classIdMap(startNode)+"> <http://sustainkg.org/"+linkLabel+"> <https://en.wikipedia.org/wiki/"+classIdMap(endNode)+"> . \n"
+            rdf += "<https://en.wikipedia.org/wiki/"+classIdMap(startNode).replace(" ", "_")+"> <http://sustainkg.org/"+linkLabel.replace(" ", "_")+"> <https://en.wikipedia.org/wiki/"+classIdMap(endNode).replace(" ", "_")+"> . \n"
         }
         rdf
     }
