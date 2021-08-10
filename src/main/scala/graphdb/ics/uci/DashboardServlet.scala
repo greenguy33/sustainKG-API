@@ -96,8 +96,8 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
               {
                   case e: RuntimeException => 
                   {
-                      println(e.toString)
-                      InternalServerError(Map("message" -> "There was a problem retrieving results from the triplestore."))
+                      e.printStackTrace()
+                      InternalServerError(Map("message" -> e.toString()))
                   }
               }
           }
@@ -121,8 +121,8 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
       {
           case e: RuntimeException => 
           {
-              println(e.toString)
-              InternalServerError(Map("message" -> "There was a problem retrieving results from the triplestore."))
+              e.printStackTrace()
+              InternalServerError(Map("message" -> e.toString()))
           }
       }
   }
@@ -152,8 +152,8 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
               {
                   case e: RuntimeException => 
                   {
-                      println(e.toString)
-                      InternalServerError(Map("message" -> "There was a problem posting results to the triplestore."))
+                      e.printStackTrace()
+                      InternalServerError(Map("message" -> e.toString()))
                   }
               }
           }
@@ -195,8 +195,8 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
               {
                   case e: RuntimeException => 
                   {
-                      println(e.toString)
-                      InternalServerError(Map("message" -> "There was a problem retrieving results from the triplestore."))
+                      e.printStackTrace()
+                      InternalServerError(Map("message" -> e.toString()))
                   }
               }
           }

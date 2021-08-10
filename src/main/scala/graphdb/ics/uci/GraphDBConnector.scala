@@ -46,7 +46,7 @@ class GraphDBConnector
 
     def getCollectiveGraph(cxn: RepositoryConnection): String =
     {
-        val query = s"select * where { graph ?g { ?s ?p ?o . }}"
+        val query = s"select ?s ?p ?o where { graph ?g { ?s ?p ?o . }}"
         val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
         val results = new ArrayBuffer[ArrayBuffer[String]]
         while (tupleQueryResult.hasNext())
@@ -60,6 +60,7 @@ class GraphDBConnector
 
     def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
     {
+        throw new RuntimeException ("my exception")
         val safeUser = userName.replace(" ","").replace("<","").replace(">","")
         deleteUserGraph(safeUser, cxn)
         val rdf = jsonToRdf(nodes, links)
@@ -123,7 +124,6 @@ class GraphDBConnector
         var linkCount = 0
         for (row <- res)
         {
-            print(row)
             val classIndices = Array(0,2)
             for (i <- classIndices)
             {
