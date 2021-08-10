@@ -35,16 +35,12 @@ class ScalatraBootstrap extends LifeCycle with DashboardProperties {
   override def init(context: ServletContext) {
 
     println("connecting to graph db...")
-    //val serviceUrl = getFromProperties("serviceURL")
-    val serviceUrl = "http://graphdb.ics.uci.edu:7200/"
+    val serviceUrl = getFromProperties("serviceURL")
     println("serviceURL: "+ serviceUrl)
-    //val username = getFromProperties("username")
-    val username = "hfreedma"
+    val username = getFromProperties("username")
     println("username: " + username)
-    //val password = getFromProperties("password")
-    val password = "obibisthebest"
-    //val repoName = getFromProperties("repoName")
-    val repoName = "kg1"
+    val password = getFromProperties("password")
+    val repoName = getFromProperties("repoName")
     println("repository: "+ repoName)
     val dbRepoManager = new RemoteRepositoryManager(serviceUrl)
     println("initialized repository manager")
