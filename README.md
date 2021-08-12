@@ -115,20 +115,13 @@ Example body:
 }
 ```
 
-GET to `/getCollectiveGraph`: No body; returns all graphs in database in JSON format.
+GET to `/getAllConcepts`: No body; returns a list of all concepts in the database in JSON format.
 
-GET to `/getAllWikipediaArticles`: No body; returns a 7z file with all Wikipedia articles as of the last update.
+POST to `/getAllNodeConnections`: accepts a node name and returns all incoming and outgoing connections to that node in JSON format.
 
-To fit in the RDF database, the following changes are made to the Wikipedia URLs:
-
+Example body:
 ```
-" -> '
-
-% -> _percent
-
-^ -> -
-
-\ -> -
-
-` -> -
+{
+    "node":"Apple"
+}
 ```
