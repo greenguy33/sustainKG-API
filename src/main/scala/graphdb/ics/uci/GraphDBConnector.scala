@@ -114,6 +114,61 @@ class GraphDBConnector
         }
     }
 
+    def getAllConcepts(cxn: RepositoryConnection): String =
+    {
+        val query = """select distinct ?s where { 
+                            { graph ?g {?s ?p ?o . }}
+                            UNION
+                            { graph ?g {?o ?p ?s .}}
+                        }"""
+        val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
+        val results = new ArrayBuffer[String]
+        while (tupleQueryResult.hasNext())
+        {
+            val bindingset: BindingSet = tupleQueryResult.next()
+            val thisResult = bindingset.getValue("s").toString
+            results += thisResult
+        }
+        var replaceString = ""
+        var str = """{
+                "nodes": [{replace}]
+                }"""
+        for (result <- results)
+        {
+            var tempRes = result.replaceAll("_", " ").replaceAll("https://en.wikipedia.org/wiki/","")
+            replaceString += "\"" + tempRes + "\","
+        }
+        // remove last comma
+        replaceString = replaceString.patch(replaceString.lastIndexOf(','), "", 1)
+        str.replaceAll("\\{replace\\}",replaceString)
+    }
+
+    def getAllNodeConnections(node: String, cxn: RepositoryConnection): String =
+    {
+        val formattedNode = "https://en.wikipedia.org/wiki/"+node.replaceAll(" ","_")
+        val query = s"""select ?s ?p ?o where
+                        {
+                            {
+                                values ?s {<$formattedNode>}
+                                graph ?g {?s ?p ?o}
+                            }
+                            UNION
+                            {
+                                values ?o {<$formattedNode>}
+                                graph ?g {?s ?p ?o}
+                            }
+                        }"""
+        val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
+        val results = new ArrayBuffer[ArrayBuffer[String]]
+        while (tupleQueryResult.hasNext())
+        {
+            val bindingset: BindingSet = tupleQueryResult.next()
+            val thisResult = ArrayBuffer(bindingset.getValue("s").toString, bindingset.getValue("p").toString, bindingset.getValue("o").toString)
+            results += thisResult
+        }
+        sparqlResToJson(results, "all_users")
+    }
+
     def sparqlResToJson(res: ArrayBuffer[ArrayBuffer[String]], user: String): String =
     {
         var classString = ""

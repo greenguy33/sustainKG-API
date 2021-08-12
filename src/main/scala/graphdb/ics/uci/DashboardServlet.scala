@@ -47,6 +47,7 @@ import org.neo4j.driver.exceptions.ServiceUnavailableException
 
 case class UserName(user: String, password: String)
 case class GraphInput(user: String, nodes: Array[Object], links: Array[Object])
+case class NodeInput(node: String)
 
 class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with DashboardProperties
 {
@@ -209,9 +210,56 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
       }
   }
 
-  get("/getAllWikipediaArticles")
+  get("/getAllConcepts")
   {
       logger.info("Received a get request")
-      new File("wiki_articles_list.7z")
+      try
+      {
+          graphDB.getAllConcepts(cxn)
+      }
+      catch
+      {
+          case e: RuntimeException => 
+          {
+              e.printStackTrace()
+              InternalServerError(Map("message" -> e.toString()))
+          }
+      }
+  }
+
+  post("/getAllNodeConnections")
+  {
+      logger.info("Received a post request")
+      try 
+      { 
+          val userInput = request.body
+          logger.info("received: " + userInput)
+          val extractedResult = parse(userInput).extract[NodeInput]
+          val node = extractedResult.node
+          logger.info("getting links for node: " + node)
+
+          if (node.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
+          else
+          {
+              try
+              {
+                  graphDB.getAllNodeConnections(node, cxn)
+              }
+              catch
+              {
+                  case e: RuntimeException => 
+                  {
+                      e.printStackTrace()
+                      InternalServerError(Map("message" -> e.toString()))
+                  }
+              }
+          }
+      } 
+      catch 
+      {
+          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
+          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
+          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
+      }
   }
 }
