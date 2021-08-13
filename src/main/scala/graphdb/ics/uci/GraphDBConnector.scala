@@ -65,20 +65,20 @@ class GraphDBConnector
         val rdf = jsonToRdf(nodes, links)
         val userGraph = "http://sustainkg.org/" + safeUser
         val query = s"insert data { graph <$userGraph> { $rdf }}"
-        cxn.begin()
+        //cxn.begin()
         val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
         tupleUpdate.execute()
-        cxn.commit()
+        //cxn.commit()
     }
 
     def deleteUserGraph(userName: String, cxn: RepositoryConnection)
     {
         val userGraph = "<http://sustainkg.org/" + userName + ">"
         val query = "CLEAR GRAPH " + userGraph
-        cxn.begin()
+        //cxn.begin()
         val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
         tupleUpdate.execute()
-        cxn.commit()
+        //cxn.commit()
     }
 
     def checkUserCredentials(userName: String, password: String, cxn: RepositoryConnection): String =
@@ -106,10 +106,10 @@ class GraphDBConnector
         else
         {
             val query = s"insert data { $userGraph <http://sustainkg.org/security> '$password' . }"
-            cxn.begin()
+            //cxn.begin()
             val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
             tupleUpdate.execute()
-            cxn.commit()
+            //cxn.commit()
             "User created"
         }
     }
@@ -135,7 +135,7 @@ class GraphDBConnector
                 }"""
         for (result <- results)
         {
-            var tempRes = result.replaceAll("_", " ").replaceAll("https://en.wikipedia.org/wiki/","")
+            var tempRes = addIllegalCharacters(result.replaceAll("https://en.wikipedia.org/wiki/","")).replaceAll("_", " ")
             replaceString += "\"" + tempRes + "\","
         }
         // remove last comma
@@ -146,7 +146,7 @@ class GraphDBConnector
     def getAllNodeConnections(node: String, cxn: RepositoryConnection): String =
     {
         val formattedNode = "https://en.wikipedia.org/wiki/"+node.replaceAll(" ","_")
-        val query = s"""select ?s ?p ?o where
+        val query = s"""select distinct ?s ?p ?o where
                         {
                             {
                                 values ?s {<$formattedNode>}
@@ -184,7 +184,7 @@ class GraphDBConnector
                 if (!classIdMap.contains(row(i)))
                 {
                     classIdMap += row(i) -> classCount
-                    val classSuffix = row(i).split("https://en.wikipedia.org/wiki/")(1).replaceAll("_", " ")
+                    val classSuffix = addIllegalCharacters(row(i).split("https://en.wikipedia.org/wiki/")(1)).replaceAll("_", " ")
                     classString += "{'type':'node','id':'"+classCount.toString+"','label':'Concept','properties':{'name':'"+classSuffix+"'}},\n"
                     classCount = classCount + 1
                 }
@@ -221,8 +221,28 @@ class GraphDBConnector
             val linkLabel = asMap("label").asInstanceOf[String]
             val startNode = asMap("source").asInstanceOf[String]
             val endNode = asMap("target").asInstanceOf[String]
-            rdf += "<https://en.wikipedia.org/wiki/"+classIdMap(startNode).replace(" ", "_")+"> <http://sustainkg.org/"+linkLabel.replace(" ", "_")+"> <https://en.wikipedia.org/wiki/"+classIdMap(endNode).replace(" ", "_")+"> . \n"
+            rdf += "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(startNode).replace(" ", "_")) +
+                "> <http://sustainkg.org/"+linkLabel.replace(" ", "_") +
+                "> <https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(endNode).replace(" ", "_"))+"> . \n"
         }
         rdf
+    }
+
+    def removeIllegalCharacters(replace: String): String =
+    {
+        var newString = replace.replaceAll("%","__percent__")
+        newString = newString.replaceAll("\"","__double_quote__")
+        newString = newString.replaceAll("\\^","__carrot__")
+        newString = newString.replaceAll("\\\\","__backslash__")
+        newString.replaceAll("`","__dash__")
+    }
+
+    def addIllegalCharacters(replace: String): String =
+    {
+        var newString = replace.replaceAll("__percent__","%")
+        newString = newString.replaceAll("__double_quote__","\\\\\"")
+        newString = newString.replaceAll("__carrot__","\\^")
+        newString = newString.replaceAll("__backslash__","\\\\\\\\")
+        newString.replaceAll("__dash__","`")
     }
 }
