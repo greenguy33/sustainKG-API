@@ -86,10 +86,8 @@ class GraphDBConnector
     {
         val userGraph = "<http://sustainkg.org/" + userName + ">"
         val query = "CLEAR GRAPH " + userGraph
-        //cxn.begin()
         val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
         tupleUpdate.execute()
-        //cxn.commit()
     }
 
     def checkUserCredentials(userName: String, password: String, cxn: RepositoryConnection): String =
@@ -117,10 +115,8 @@ class GraphDBConnector
         else
         {
             val query = s"insert data { $userGraph <http://sustainkg.org/security> '$password' . }"
-            //cxn.begin()
             val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
             tupleUpdate.execute()
-            //cxn.commit()
             "User created"
         }
     }
@@ -153,7 +149,7 @@ class GraphDBConnector
 
     def getAllNodeConnections(node: String, cxn: RepositoryConnection): String =
     {
-        val formattedNode = "https://en.wikipedia.org/wiki/"+node.replaceAll(" ","_")
+        val formattedNode = "https://en.wikipedia.org/wiki/"+removeIllegalCharacters(node).replaceAll(" ","_")
         val query = s"""select distinct ?s ?p ?o where
                         {
                             {
