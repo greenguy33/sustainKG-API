@@ -61,14 +61,25 @@ class GraphDBConnector
     def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
     {
         val safeUser = userName.replace(" ","_").replace("<","").replace(">","")
-        deleteUserGraph(safeUser, cxn)
-        val rdf = jsonToRdf(nodes, links)
-        val userGraph = "http://sustainkg.org/" + safeUser
-        val query = s"insert data { graph <$userGraph> { $rdf }}"
-        //cxn.begin()
-        val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
-        tupleUpdate.execute()
-        //cxn.commit()
+        cxn.begin()
+        try
+        {
+            deleteUserGraph(safeUser, cxn)
+            val rdf = jsonToRdf(nodes, links)
+            val userGraph = "http://sustainkg.org/" + safeUser
+            val query = s"insert data { graph <$userGraph> { $rdf }}"
+            val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
+            tupleUpdate.execute()
+            cxn.commit()
+        }
+        catch
+        {
+            case e: Throwable => 
+            {
+                cxn.rollback()
+                throw new Throwable(e)
+            }
+        }
     }
 
     def deleteUserGraph(userName: String, cxn: RepositoryConnection)
@@ -130,9 +141,6 @@ class GraphDBConnector
             results += thisResult
         }
         var replaceString = ""
-        var str = """{
-                "nodes": [{replace}]
-                }"""
         for (result <- results)
         {
             var tempRes = addIllegalCharacters(result.replaceAll("https://en.wikipedia.org/wiki/","")).replaceAll("_", " ")
@@ -140,7 +148,7 @@ class GraphDBConnector
         }
         // remove last comma
         replaceString = replaceString.patch(replaceString.lastIndexOf(','), "", 1)
-        str.replaceAll("\\{replace\\}",replaceString)
+        """{"nodes": ["""+replaceString+"""]}"""
     }
 
     def getAllNodeConnections(node: String, cxn: RepositoryConnection): String =
@@ -167,6 +175,41 @@ class GraphDBConnector
             results += thisResult
         }
         sparqlResToJson(results, "all_users")
+    }
+
+    def getGraphStatistics(cxn: RepositoryConnection): String =
+    {
+        val query = s"""select ?g (count(distinct ?s) as ?nc) ((count(?p)/2) as ?lc) where
+                        {
+                            graph ?g
+                            {
+                                {
+                                    ?s ?p ?o
+                                }
+                                UNION
+                                {
+                                    ?o ?p ?s
+                                }
+                            }
+                        }
+                        group by ?g"""
+        val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
+        val results = new ArrayBuffer[ArrayBuffer[String]]
+        while (tupleQueryResult.hasNext())
+        {
+            val bindingset: BindingSet = tupleQueryResult.next()
+            val thisResult = ArrayBuffer(bindingset.getValue("g").toString, bindingset.getValue("nc").toString, bindingset.getValue("lc").toString)
+            results += thisResult
+        }
+        var res = "["
+        for (row <- results)
+        {
+            val name = row(0).replaceAll("http://sustainkg.org/","")
+            val nc = row(1).replaceAll("\\^\\^<http://www.w3.org/2001/XMLSchema#integer>","")
+            val lc = row(2).replaceAll("\\^\\^<http://www.w3.org/2001/XMLSchema#decimal>","")
+            res += s"""{\"name\":\"$name\", \"nodes\":$nc, \"links\":$lc},"""
+        }
+        res.patch(res.lastIndexOf(','), "", 1) + "]"
     }
 
     def sparqlResToJson(res: ArrayBuffer[ArrayBuffer[String]], user: String): String =

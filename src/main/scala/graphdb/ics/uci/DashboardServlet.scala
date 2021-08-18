@@ -262,4 +262,21 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
           case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
       }
   }
+
+  get("/getGraphStatistics")
+  {
+      logger.info("Received a get request")
+      try
+      {
+          graphDB.getGraphStatistics(cxn)
+      }
+      catch
+      {
+          case e: RuntimeException => 
+          {
+              e.printStackTrace()
+              InternalServerError(Map("message" -> e.toString()))
+          }
+      }
+  }
 }
