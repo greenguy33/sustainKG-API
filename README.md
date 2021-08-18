@@ -125,3 +125,5 @@ Example body:
     "node":"Apple"
 }
 ```
+
+GET to `/getGraphStatistics`: No body; returns a list of all user graphs as well as node and link counts.
