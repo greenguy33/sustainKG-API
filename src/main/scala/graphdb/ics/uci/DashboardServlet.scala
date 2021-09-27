@@ -45,7 +45,8 @@ import org.apache.solr.client.solrj.impl.HttpSolrClient
 
 import org.neo4j.driver.exceptions.ServiceUnavailableException
 
-case class UserName(user: String, password: String)
+//case class UserName(user: String, password: String)
+case class UserName(user: String)
 case class GraphInput(user: String, nodes: Array[Object], links: Array[Object])
 case class NodeInput(node: String)
 
@@ -62,6 +63,8 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
       contentType = formats("json")
   }
 
+  /* this route could accept input with or without a password, depending on if we are using UCI authentication.
+  For now just using comments to remove the password requirement.*/
   post("/getUserGraph")
   {
       logger.info("Received a post request")
@@ -71,17 +74,18 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
           logger.info("received: " + userInput)
           val extractedResult = parse(userInput).extract[UserName]
           val userName = extractedResult.user
-          val pw = extractedResult.password
+          //val pw = extractedResult.password
           logger.info("getting graph for user: " + userName)
 
           if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
+          //else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
           else
           {
               try
               {
-                  val res = graphDB.getUserGraph(userName, pw, cxn)
-                  if (res == "Wrong Username")
+                  //val res = graphDB.getUserGraph(userName, pw, cxn)
+                  graphDB.getUserGraphNoPassword(userName, cxn)
+                  /*if (res == "Wrong Username")
                   {
                       val noContentMessage = "User \"" + userName + "\" does not exist"
                       NoContent(Map("message" -> noContentMessage))
@@ -91,7 +95,7 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
                       val noContentMessage = "Password incorrect for user \"" + userName + "\""
                       NoContent(Map("message" -> noContentMessage))
                   }
-                  else res
+                  else res*/
               }
               catch
               {
@@ -167,7 +171,7 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
       }
   }
 
-  post("/createNewUser")
+  /*post("/createNewUser")
   {
       logger.info("Received a new user request")
       try 
@@ -208,7 +212,7 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
           case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
           case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
       }
-  }
+  }*/
 
   get("/getAllConcepts")
   {

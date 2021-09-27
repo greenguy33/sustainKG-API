@@ -44,6 +44,21 @@ class GraphDBConnector
         else loginResult
     }
 
+    def getUserGraphNoPassword(userName: String, cxn: RepositoryConnection): String =
+    {
+        val safeUser = userName.replace(" ","_").replace("<","").replace(">","")
+        val query = s"select * where { graph <http://sustainkg.org/$safeUser> { ?s ?p ?o . }}"
+        val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
+        val results = new ArrayBuffer[ArrayBuffer[String]]
+        while (tupleQueryResult.hasNext())
+        {
+            val bindingset: BindingSet = tupleQueryResult.next()
+            val thisResult = ArrayBuffer(bindingset.getValue("s").toString, bindingset.getValue("p").toString, bindingset.getValue("o").toString)
+            results += thisResult
+        }
+        sparqlResToJson(results, safeUser)
+    }
+
     def getCollectiveGraph(cxn: RepositoryConnection): String =
     {
         val query = s"select ?s ?p ?o where { graph ?g { ?s ?p ?o . }}"
