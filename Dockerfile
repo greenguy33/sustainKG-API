@@ -1,20 +1,23 @@
-FROM amd64/openjdk:12
+# This Dockerfile has two required ARGs to determine which base image
+# to use for the JDK and which sbt version to install.
 
-ENV SBT_VERSION 1.1.4
+ARG OPENJDK_TAG=8u232
+FROM openjdk:${OPENJDK_TAG}
 
+ARG SBT_VERSION=1.1.4
 
-# Install dos2unix
-RUN yum install dos2unix -y
-
-# Install SBT
-RUN yum install -y https://dl.bintray.com/sbt/rpm/sbt-$SBT_VERSION.rpm
-
-
-# install base dependencies and plugins as defind in project config files
-# todo - install to an anon directory if necessary
-WORKDIR /appsrc
-COPY build.sbt /appsrc
-COPY project/plugins.sbt /appsrc/project/
-RUN dos2unix /appsrc/build.sbt \
-	&& dos2unix /appsrc/project/plugins.sbt
-RUN sbt update
+# Install sbt
+RUN \
+  mkdir /working/ && \
+  cd /working/ && \
+  curl -L -o sbt-$SBT_VERSION.deb https://repo.scala-sbt.org/scalasbt/debian/sbt-$SBT_VERSION.deb && \
+  dpkg -i sbt-$SBT_VERSION.deb && \
+  rm sbt-$SBT_VERSION.deb && \
+  apt-get update && \
+  apt-get install sbt && \
+  cd && \
+  rm -r /working/ && \
+  sbt sbtVersion
+EXPOSE 8080
+COPY sustainKG-API /sustainKG-API
+ENTRYPOINT cd /sustainKG-API && sbt ~jetty:start
