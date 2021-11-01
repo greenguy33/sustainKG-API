@@ -20,4 +20,5 @@ RUN \
   sbt sbtVersion
 EXPOSE 8080
 COPY sustainKG-API /sustainKG-API
-ENTRYPOINT cd /sustainKG-API && sbt ~jetty:start
+RUN apt-get update -y && apt-get upgrade -y
+ENTRYPOINT /sustainKG-API/entrypoint.sh
