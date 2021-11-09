@@ -239,24 +239,24 @@ class GraphDBConnector
                 {
                     classIdMap += row(i) -> classCount
                     val classSuffix = addIllegalCharacters(row(i).split("https://en.wikipedia.org/wiki/")(1)).replaceAll("_", " ")
-                    classString += "{'type':'node','id':'"+classCount.toString+"','label':'Concept','properties':{'name':'"+classSuffix+"'}},\n"
+                    classString += "{\"type\":\"node\",\"id\":\""+classCount.toString+"\",\"label\":\"Concept\",\"properties\":{\"name\":\""+classSuffix+"\"}},\n"
                     classCount = classCount + 1
                 }
             }
             val linkSuffix = row(1).split("http://sustainkg.org/")(1).replaceAll("_", " ")
             val startId = classIdMap(row(0))
             val endId = classIdMap(row(2))
-            linkString += "{'type':'link','id':'"+linkCount.toString+"','label':'"+linkSuffix+"','source':'"+startId+"', 'target':'"+endId+"','properties':{}},\n"
+            linkString += "{\"type\":\"link\",\"id\":\""+linkCount.toString+"\",\"label\":\""+linkSuffix+"\",\"source\":\""+startId+"\", \"target\":\""+endId+"\",\"properties\":{}},\n"
             linkCount = linkCount + 1
         }
         // remove last comma
         classString = classString.patch(classString.lastIndexOf(','), "", 1)
         linkString = linkString.patch(linkString.lastIndexOf(','), "", 1)
         s"""{
-            'user':'$user',
-            'nodes':[$classString],
-            'links':[$linkString]
-            }""".replaceAll("'","\"")
+            "user":"$user",
+            "nodes":[$classString],
+            "links":[$linkString]
+            }"""
     }
 
     def jsonToRdf(nodes: Array[Object], links: Array[Object]): String =
