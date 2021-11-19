@@ -19,10 +19,12 @@ import org.eclipse.rdf4j.query.QueryEvaluationException
 import java.nio.file.Path
 import java.nio.file.Paths
 import org.slf4j.LoggerFactory
+import scala.io.Source
 
 class GraphDBConnector 
 {
     val logger = LoggerFactory.getLogger("turboAPIlogger")
+    val groupMap = getGroupMap()
 
     def getUserGraph(userName: String, password: String, cxn: RepositoryConnection): String =
     {
@@ -46,7 +48,9 @@ class GraphDBConnector
 
     def getUserGraphNoPassword(userName: String, cxn: RepositoryConnection): String =
     {
-        val safeUser = userName.replace(" ","_").replace("<","").replace(">","")
+        var safeUser = userName.replace(" ","_").replace("<","").replace(">","")
+        // map to group account
+        safeUser = groupMap(safeUser)
         val query = s"select * where { graph <http://sustainkg.org/$safeUser> { ?s ?p ?o . }}"
         val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
         val results = new ArrayBuffer[ArrayBuffer[String]]
@@ -75,7 +79,9 @@ class GraphDBConnector
 
     def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
     {
-        val safeUser = userName.replace(" ","_").replace("<","").replace(">","")
+        var safeUser = userName.replace(" ","_").replace("<","").replace(">","")
+        // map to group account
+        safeUser = groupMap(safeUser)
         cxn.begin()
         try
         {
@@ -298,5 +304,19 @@ class GraphDBConnector
         newString = newString.replaceAll("__carrot__","\\^")
         newString = newString.replaceAll("__backslash__","\\\\\\\\")
         newString.replaceAll("__dash__","`")
+    }
+
+    def getGroupMap(): HashMap[String, String] =
+    {
+        val map = new HashMap[String, String]
+        val filename = "student_groups.csv"
+        for (line <- Source.fromFile(filename).getLines) 
+        {
+            val split = line.split(",")
+            val netId = split(0)
+            val group = split(1)
+            map += netId -> group
+        }
+        map
     }
 }
