@@ -50,7 +50,7 @@ class GraphDBConnector
     {
         var safeUser = userName.replace(" ","_").replace("<","").replace(">","")
         // map to group account
-        safeUser = groupMap(safeUser)
+        if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
         val query = s"select * where { graph <http://sustainkg.org/$safeUser> { ?s ?p ?o . }}"
         val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
         val results = new ArrayBuffer[ArrayBuffer[String]]
@@ -81,7 +81,7 @@ class GraphDBConnector
     {
         var safeUser = userName.replace(" ","_").replace("<","").replace(">","")
         // map to group account
-        safeUser = groupMap(safeUser)
+        if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
         cxn.begin()
         try
         {
