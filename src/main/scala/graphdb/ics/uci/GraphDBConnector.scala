@@ -20,6 +20,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import org.slf4j.LoggerFactory
 import scala.io.Source
+import java.util.UUID
 
 class GraphDBConnector 
 {
@@ -234,26 +235,58 @@ class GraphDBConnector
         var classString = ""
         var linkString = ""
         val classIdMap = new HashMap[String, Integer]
+        val linkPropMap = new HashMap[String, HashMap[String, String]]
         var classCount = 0
         var linkCount = 0
         for (row <- res)
         {
-            val classIndices = Array(0,2)
-            for (i <- classIndices)
+            if (!row(0).startsWith("https://en.wikipedia.org/wiki/"))
             {
-                if (!classIdMap.contains(row(i)))
+                if (linkPropMap.contains(row(0)))
                 {
-                    classIdMap += row(i) -> classCount
-                    val classSuffix = addIllegalCharacters(row(i).split("https://en.wikipedia.org/wiki/")(1)).replaceAll("_", " ")
-                    classString += "{\"type\":\"node\",\"id\":\""+classCount.toString+"\",\"label\":\"Concept\",\"properties\":{\"name\":\""+classSuffix+"\"}},\n"
-                    classCount = classCount + 1
+                    linkPropMap(row(0)) += row(1) -> row(2)
+                }
+                else
+                {
+                    linkPropMap += row(0) -> HashMap(row(1) -> row(2))
                 }
             }
-            val linkSuffix = row(1).split("http://sustainkg.org/")(1).replaceAll("_", " ")
-            val startId = classIdMap(row(0))
-            val endId = classIdMap(row(2))
-            linkString += "{\"type\":\"link\",\"id\":\""+linkCount.toString+"\",\"label\":\""+linkSuffix+"\",\"source\":\""+startId+"\", \"target\":\""+endId+"\",\"properties\":{}},\n"
-            linkCount = linkCount + 1
+        }
+        for (row <- res)
+        {
+            if (row(0).startsWith("https://en.wikipedia.org/wiki/"))
+            {
+                val classIndices = Array(0,2)
+                for (i <- classIndices)
+                {
+                    if (!classIdMap.contains(row(i)))
+                    {
+                        classIdMap += row(i) -> classCount
+                        val classSuffix = addIllegalCharacters(row(i).split("https://en.wikipedia.org/wiki/")(1)).replaceAll("_", " ")
+                        classString += "{\"type\":\"node\",\"id\":\""+classCount.toString+"\",\"label\":\"Concept\",\"properties\":{\"name\":\""+classSuffix+"\"}},\n"
+                        classCount = classCount + 1
+                    }
+                }
+                var citation = ""
+                var linkSuffix = ""
+                val linkProps = linkPropMap(row(1))
+                for ((k,v) <- linkProps)
+                {
+                    if (k == "http://sustainkg.org/citation")
+                    {
+                        citation = "\"citation\":\""+v+"\""
+                    }
+                    else if (k == "http://sustainkg.org/label")
+                    {
+                        linkSuffix = v.split("http://sustainkg.org/")(1).replaceAll("_", " ")
+                    }
+                }
+                assert (linkSuffix != "", "No link label found for link with index " + linkCount.toString)
+                val startId = classIdMap(row(0))
+                val endId = classIdMap(row(2))
+                linkString += "{\"type\":\"link\",\"id\":\""+linkCount.toString+"\",\"label\":\""+linkSuffix+"\",\"source\":\""+startId+"\", \"target\":\""+endId+"\",\"properties\":{"+citation+"}},\n"
+                linkCount = linkCount + 1
+            }
         }
         // remove last comma
         classString = classString.patch(classString.lastIndexOf(','), "", 1)
@@ -277,13 +310,27 @@ class GraphDBConnector
         }
         for (map <- links)
         {
+            val uniqueId = UUID.randomUUID().toString.replace("-","")
             val asMap = map.asInstanceOf[Map[String,Object]]
             val linkLabel = asMap("label").asInstanceOf[String]
             val startNode = asMap("source").asInstanceOf[String]
             val endNode = asMap("target").asInstanceOf[String]
+            val propMap = asMap("properties").asInstanceOf[Map[String,String]]
+            var citation = ""
+            if (propMap.contains("citation"))
+            {
+                if (propMap("citation") != "" && propMap("citation") != null)
+                {
+                    citation = propMap("citation")
+                }
+            }
             rdf += "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(startNode).replace(" ", "_")) +
-                "> <http://sustainkg.org/"+linkLabel.replace(" ", "_") +
-                "> <https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(endNode).replace(" ", "_"))+"> . \n"
+                "> <http://sustainkg.org/"+uniqueId +"> <https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(endNode).replace(" ", "_"))+"> . \n"+
+                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/label> <http://sustainkg.org/"+linkLabel.replace(" ", "_")+"> . \n"
+            if (citation != "")
+            {
+                rdf += "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/citation> <"+citation+"> . \n"
+            }
         }
         rdf
     }
@@ -312,10 +359,13 @@ class GraphDBConnector
         val filename = "student_groups.csv"
         for (line <- Source.fromFile(filename).getLines) 
         {
-            val split = line.split(",")
-            val netId = split(0)
-            val group = split(1)
-            map += netId -> group
+            if (line != "")
+            {
+                val split = line.split(",")
+                val netId = split(0)
+                val group = split(1)
+                map += netId -> group
+            }
         }
         map
     }
