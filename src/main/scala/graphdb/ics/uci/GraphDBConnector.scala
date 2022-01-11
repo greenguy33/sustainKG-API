@@ -274,7 +274,7 @@ class GraphDBConnector
                 {
                     if (k == "http://sustainkg.org/citation")
                     {
-                        citation = "\"citation\":\""+v+"\""
+                        citation = "\"citation\":\""+v.substring(21)+"\""
                     }
                     else if (k == "http://sustainkg.org/label")
                     {
@@ -329,7 +329,7 @@ class GraphDBConnector
                 "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/label> <http://sustainkg.org/"+linkLabel.replace(" ", "_")+"> . \n"
             if (citation != "")
             {
-                rdf += "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/citation> <"+citation+"> . \n"
+                rdf += "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/citation> <http://sustainkg.org/"+citation+"> . \n"
             }
         }
         rdf
