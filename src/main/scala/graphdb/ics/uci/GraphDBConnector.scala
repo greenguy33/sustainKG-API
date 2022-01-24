@@ -27,7 +27,7 @@ class GraphDBConnector
     val logger = LoggerFactory.getLogger("turboAPIlogger")
     val groupMap = getGroupMap()
 
-    def getUserGraph(userName: String, password: String, cxn: RepositoryConnection): String =
+    /*def getUserGraph(userName: String, password: String, cxn: RepositoryConnection): String =
     {
         val safeUser = userName.replace(" ","_").replace("<","").replace(">","")
         val loginResult = checkUserCredentials(safeUser, password, cxn)
@@ -45,7 +45,7 @@ class GraphDBConnector
             sparqlResToJson(results, safeUser)
         }
         else loginResult
-    }
+    }*/
 
     def getUserGraphNoPassword(userName: String, cxn: RepositoryConnection): String =
     {
