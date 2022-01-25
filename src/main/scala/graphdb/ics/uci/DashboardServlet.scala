@@ -63,7 +63,7 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
       contentType = formats("json")
   }
 
-  get("/checkUserCredentials")
+  post("/checkUserCredentials")
   {
       logger.info("Received a login request")
       try 
