@@ -270,21 +270,23 @@ class GraphDBConnector
                 var citation = ""
                 var linkSuffix = ""
                 val linkProps = linkPropMap(row(1))
+                var moreProps = ""
                 for ((k,v) <- linkProps)
                 {
-                    if (k == "http://sustainkg.org/citation")
-                    {
-                        citation = "\"citation\":\""+v.substring(21)+"\""
-                    }
-                    else if (k == "http://sustainkg.org/label")
+                    if (k == "http://sustainkg.org/label")
                     {
                         linkSuffix = v.split("http://sustainkg.org/")(1).replaceAll("_", " ")
                     }
+                    else
+                    {
+                        moreProps += "\""+k.split("http://sustainkg.org/")(1)+"\":\""+v.substring(21)+"\","
+                    }
                 }
+                moreProps = moreProps.patch(moreProps.lastIndexOf(','), "", 1)
                 assert (linkSuffix != "", "No link label found for link with index " + linkCount.toString)
                 val startId = classIdMap(row(0))
                 val endId = classIdMap(row(2))
-                linkString += "{\"type\":\"link\",\"id\":\""+linkCount.toString+"\",\"label\":\""+linkSuffix+"\",\"source\":\""+startId+"\", \"target\":\""+endId+"\",\"properties\":{"+citation+"}},\n"
+                linkString += "{\"type\":\"link\",\"id\":\""+linkCount.toString+"\",\"label\":\""+linkSuffix+"\",\"source\":\""+startId+"\", \"target\":\""+endId+"\","+moreProps+"},\n"
                 linkCount = linkCount + 1
             }
         }
@@ -315,18 +317,22 @@ class GraphDBConnector
             val linkLabel = asMap("label").asInstanceOf[String]
             val startNode = asMap("source").asInstanceOf[String]
             val endNode = asMap("target").asInstanceOf[String]
-            val propMap = asMap("properties").asInstanceOf[Map[String,String]]
             var citation = ""
-            if (propMap.contains("citation"))
+            if (asMap.contains("citation"))
             {
-                if (propMap("citation") != "" && propMap("citation") != null)
-                {
-                    citation = propMap("citation")
-                }
+                citation = asMap("citation").asInstanceOf[String]
             }
+            val x_start = asMap("x_start").asInstanceOf[String]
+            val x_end = asMap("x_end").asInstanceOf[String]
+            val y_start = asMap("y_start").asInstanceOf[String]
+            val y_end = asMap("y_end").asInstanceOf[String]
             rdf += "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(startNode).replace(" ", "_")) +
                 "> <http://sustainkg.org/"+uniqueId +"> <https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(endNode).replace(" ", "_"))+"> . \n"+
-                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/label> <http://sustainkg.org/"+linkLabel.replace(" ", "_")+"> . \n"
+                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/label> <http://sustainkg.org/"+linkLabel.replace(" ", "_")+"> . \n"+
+                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/x_start> <http://sustainkg.org/"+x_start+"> . \n"+
+                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/x_end> <http://sustainkg.org/"+x_end+"> . \n"+
+                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/y_start> <http://sustainkg.org/"+y_start+"> . \n"+
+                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/y_end> <http://sustainkg.org/"+y_end+"> . \n"
             if (citation != "")
             {
                 rdf += "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/citation> <http://sustainkg.org/"+citation+"> . \n"
