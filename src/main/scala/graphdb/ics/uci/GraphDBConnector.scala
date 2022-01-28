@@ -282,11 +282,14 @@ class GraphDBConnector
                         moreProps += "\""+k.split("http://sustainkg.org/")(1)+"\":\""+v.substring(21)+"\","
                     }
                 }
-                moreProps = moreProps.patch(moreProps.lastIndexOf(','), "", 1)
+                if (moreProps != "")
+                {
+                    moreProps = ", "+moreProps.patch(moreProps.lastIndexOf(','), "", 1)
+                }
                 assert (linkSuffix != "", "No link label found for link with index " + linkCount.toString)
                 val startId = classIdMap(row(0))
                 val endId = classIdMap(row(2))
-                linkString += "{\"type\":\"link\",\"id\":\""+linkCount.toString+"\",\"label\":\""+linkSuffix+"\",\"source\":\""+startId+"\", \"target\":\""+endId+"\","+moreProps+"},\n"
+                linkString += "{\"type\":\"link\",\"id\":\""+linkCount.toString+"\",\"label\":\""+linkSuffix+"\",\"source\":\""+startId+"\", \"target\":\""+endId+"\""+moreProps+"},\n"
                 linkCount = linkCount + 1
             }
         }
