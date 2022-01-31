@@ -236,6 +236,7 @@ class GraphDBConnector
         var linkString = ""
         val classIdMap = new HashMap[String, Integer]
         val linkPropMap = new HashMap[String, HashMap[String, String]]
+        val nodePropMap = new HashMap[String, HashMap[String, String]]
         var classCount = 0
         var linkCount = 0
         for (row <- res)
@@ -251,10 +252,24 @@ class GraphDBConnector
                     linkPropMap += row(0) -> HashMap(row(1) -> row(2))
                 }
             }
+            else
+            {
+                if (row(1) == "http://sustainkg.org/x_coord" || row(1) == "http://sustainkg.org/y_coord")
+                {
+                    if (nodePropMap.contains(row(0).replace("https://en.wikipedia.org/wiki/","")))
+                    {
+                        nodePropMap(row(0).replace("https://en.wikipedia.org/wiki/","")) += row(1) -> row(2).replace("http://sustainkg.org/","")
+                    }
+                    else
+                    {
+                        nodePropMap += row(0).replace("https://en.wikipedia.org/wiki/","") -> HashMap(row(1) -> row(2).replace("http://sustainkg.org/",""))
+                    }
+                }
+            }
         }
         for (row <- res)
         {
-            if (row(0).startsWith("https://en.wikipedia.org/wiki/"))
+            if (row(0).startsWith("https://en.wikipedia.org/wiki/") && row(2).startsWith("https://en.wikipedia.org/wiki/"))
             {
                 val classIndices = Array(0,2)
                 for (i <- classIndices)
@@ -263,7 +278,8 @@ class GraphDBConnector
                     {
                         classIdMap += row(i) -> classCount
                         val classSuffix = addIllegalCharacters(row(i).split("https://en.wikipedia.org/wiki/")(1)).replaceAll("_", " ")
-                        classString += "{\"type\":\"node\",\"id\":\""+classCount.toString+"\",\"label\":\"Concept\",\"properties\":{\"name\":\""+classSuffix+"\"}},\n"
+                        classString += "{\"type\":\"node\",\"id\":\""+classCount.toString+"\",\"label\":\"Concept\",\"properties\":{\"name\":\""+classSuffix+"\"},\n" +
+                                        "\"x\":\""+nodePropMap(classSuffix)("http://sustainkg.org/x_coord") + "\", \"y\":\""+nodePropMap(classSuffix)("http://sustainkg.org/y_coord") + "\"},"
                         classCount = classCount + 1
                     }
                 }
@@ -312,6 +328,12 @@ class GraphDBConnector
             val asMap = map.asInstanceOf[Map[String,Object]]
             val propMap = asMap("properties").asInstanceOf[Map[String,String]]
             classIdMap += asMap("id").asInstanceOf[String] -> propMap("name").asInstanceOf[String]
+            val x_coord = asMap("x").asInstanceOf[String]
+            val y_coord = asMap("y").asInstanceOf[String]
+            rdf += "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(propMap("name").asInstanceOf[String].replace(" ", "_")) +
+            "> <http://sustainkg.org/x_coord> <http://sustainkg.org/" + x_coord + "> . \n" +
+            "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(propMap("name").asInstanceOf[String].replace(" ", "_")) +
+            "> <http://sustainkg.org/y_coord> <http://sustainkg.org/" + y_coord + "> . \n"
         }
         for (map <- links)
         {
@@ -325,17 +347,9 @@ class GraphDBConnector
             {
                 citation = asMap("citation").asInstanceOf[String]
             }
-            val x_start = asMap("x_start").asInstanceOf[String]
-            val x_end = asMap("x_end").asInstanceOf[String]
-            val y_start = asMap("y_start").asInstanceOf[String]
-            val y_end = asMap("y_end").asInstanceOf[String]
             rdf += "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(startNode).replace(" ", "_")) +
                 "> <http://sustainkg.org/"+uniqueId +"> <https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(endNode).replace(" ", "_"))+"> . \n"+
-                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/label> <http://sustainkg.org/"+linkLabel.replace(" ", "_")+"> . \n"+
-                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/x_start> <http://sustainkg.org/"+x_start+"> . \n"+
-                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/x_end> <http://sustainkg.org/"+x_end+"> . \n"+
-                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/y_start> <http://sustainkg.org/"+y_start+"> . \n"+
-                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/y_end> <http://sustainkg.org/"+y_end+"> . \n"
+                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/label> <http://sustainkg.org/"+linkLabel.replace(" ", "_")+"> . \n"
             if (citation != "")
             {
                 rdf += "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/citation> <http://sustainkg.org/"+citation+"> . \n"
