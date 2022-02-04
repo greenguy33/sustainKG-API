@@ -256,13 +256,14 @@ class GraphDBConnector
             {
                 if (row(1) == "http://sustainkg.org/x_coord" || row(1) == "http://sustainkg.org/y_coord")
                 {
-                    if (nodePropMap.contains(row(0).replace("https://en.wikipedia.org/wiki/","")))
+                    val keyval = addIllegalCharacters(row(0).replace("https://en.wikipedia.org/wiki/","").replaceAll("_", " "))
+                    if (nodePropMap.contains(keyval))
                     {
-                        nodePropMap(row(0).replace("https://en.wikipedia.org/wiki/","")) += row(1) -> row(2).replace("http://sustainkg.org/","")
+                        nodePropMap(keyval) += row(1) -> row(2).replace("http://sustainkg.org/","")
                     }
                     else
                     {
-                        nodePropMap += row(0).replace("https://en.wikipedia.org/wiki/","") -> HashMap(row(1) -> row(2).replace("http://sustainkg.org/",""))
+                        nodePropMap += keyval -> HashMap(row(1) -> row(2).replace("http://sustainkg.org/",""))
                     }
                 }
             }
