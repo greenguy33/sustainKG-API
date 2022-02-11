@@ -82,7 +82,9 @@ Example body:
             "label": "Concept",
             "properties": {
                 "name": "Innovation"
-            }
+            },
+	    "x":"23.975",
+	    "y":"-46.876"
         },
         {
             "type": "node",
@@ -90,7 +92,9 @@ Example body:
             "label": "Concept",
             "properties": {
                 "name": "Globalization"
-            }
+            },
+	    "x":"63.209",
+	    "y":"-49.292"
         }],
     "links": [
         {
@@ -99,7 +103,7 @@ Example body:
             "label": "benefits",
             "source": "0",
             "target": "1",
-            "properties": {}
+            "citation": "www.mycitation.edu"
         }
     ]
 }
