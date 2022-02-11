@@ -256,7 +256,7 @@ class GraphDBConnector
             {
                 if (row(1) == "http://sustainkg.org/x_coord" || row(1) == "http://sustainkg.org/y_coord")
                 {
-                    val keyval = addIllegalCharacters(row(0).replace("https://en.wikipedia.org/wiki/","").replaceAll("_", " "))
+                    val keyval = addIllegalCharacters(row(0).replace("https://en.wikipedia.org/wiki/","")).replaceAll("_", " ")
                     if (nodePropMap.contains(keyval))
                     {
                         nodePropMap(keyval) += row(1) -> row(2).replace("http://sustainkg.org/","")
@@ -266,6 +266,14 @@ class GraphDBConnector
                         nodePropMap += keyval -> HashMap(row(1) -> row(2).replace("http://sustainkg.org/",""))
                     }
                 }
+            }
+        }
+        for ((k,v) <- nodePropMap)
+        {
+            print(k)
+            for ((k1,v1) <- v)
+            {
+                print(k1 + " " + v1)
             }
         }
         for (row <- res)
@@ -278,7 +286,7 @@ class GraphDBConnector
                     if (!classIdMap.contains(row(i)))
                     {
                         classIdMap += row(i) -> classCount
-                        val classSuffix = addIllegalCharacters(row(i).split("https://en.wikipedia.org/wiki/")(1)).replaceAll("_", " ")
+                        val classSuffix = addIllegalCharacters(row(i).replace("https://en.wikipedia.org/wiki/","")).replaceAll("_", " ")
                         classString += "{\"type\":\"node\",\"id\":\""+classCount.toString+"\",\"label\":\"Concept\",\"properties\":{\"name\":\""+classSuffix+"\"},\n" +
                                         "\"x\":\""+nodePropMap(classSuffix)("http://sustainkg.org/x_coord") + "\", \"y\":\""+nodePropMap(classSuffix)("http://sustainkg.org/y_coord") + "\"},"
                         classCount = classCount + 1
