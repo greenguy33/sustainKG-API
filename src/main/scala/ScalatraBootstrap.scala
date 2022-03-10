@@ -22,14 +22,6 @@ class ScalatraBootstrap extends LifeCycle with DashboardProperties {
       dbCxn.close()
       dbR.shutDown()
       dbRm.shutDown()
-
-      /*val wp_dbRm = GraphDbConnection.getWpDbRepoManager()
-      val wp_dbR = GraphDbConnection.getWpDbRepo()
-      val wp_dbCxn = GraphDbConnection.getWpDbConnection()
-
-      wp_dbCxn.close()
-      wp_dbR.shutDown()
-      wp_dbRm.shutDown()*/
   }
 
   override def init(context: ServletContext) {
@@ -53,19 +45,9 @@ class ScalatraBootstrap extends LifeCycle with DashboardProperties {
     val dbCxn = dbRepo.getConnection()
     println("initializing connection")
 
-    /*val wp_dbRepoManager = new RemoteRepositoryManager(getFromProperties("serviceURL"))
-    wp_dbRepoManager.setUsernameAndPassword(getFromProperties("username"), getFromProperties("password"))
-    wp_dbRepoManager.initialize()
-    val wp_dbRepo = wp_dbRepoManager.getRepository(getFromProperties("wikiRepoName"))
-    val wp_dbCxn = wp_dbRepo.getConnection()*/
-
     GraphDbConnection.setDbRepoManager(dbRepoManager)
     GraphDbConnection.setDbRepo(dbRepo)
     GraphDbConnection.setDbConnection(dbCxn)
-
-    /*GraphDbConnection.setWpDbRepoManager(wp_dbRepoManager)
-    GraphDbConnection.setWpDbRepo(wp_dbRepo)
-    GraphDbConnection.setWpDbConnection(wp_dbCxn)*/
 
     println("established connection to repository "+ repoName)
     context.mount(new DashboardServlet, "/*")

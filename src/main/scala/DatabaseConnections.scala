@@ -16,6 +16,11 @@ object GraphDbConnection
     }
     
     def getDbConnection(): RepositoryConnection = dbCxn
+
+    def getNewDbConnection(): RepositoryConnection =
+    {
+        this.dbRepo.getConnection()
+    }
     
     def setDbRepo(dbRepo: Repository)
     {

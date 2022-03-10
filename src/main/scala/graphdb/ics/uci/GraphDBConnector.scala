@@ -268,14 +268,14 @@ class GraphDBConnector
                 }
             }
         }
-        for ((k,v) <- nodePropMap)
-        {
-            print(k)
-            for ((k1,v1) <- v)
-            {
-                print(k1 + " " + v1)
-            }
-        }
+        // for ((k,v) <- nodePropMap)
+        // {
+        //     print(k)
+        //     for ((k1,v1) <- v)
+        //     {
+        //         print(k1 + " " + v1)
+        //     }
+        // }
         for (row <- res)
         {
             if (row(0).startsWith("https://en.wikipedia.org/wiki/") && row(2).startsWith("https://en.wikipedia.org/wiki/"))

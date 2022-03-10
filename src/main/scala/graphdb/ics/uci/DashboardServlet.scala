@@ -54,7 +54,6 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
 {
   val graphDB: GraphDBConnector = new GraphDBConnector
   val cxn = GraphDbConnection.getDbConnection()
-  val wpCxn = GraphDbConnection.getWpDbConnection()
   val logger = LoggerFactory.getLogger("turboAPIlogger")
 
   protected implicit val jsonFormats: Formats = DefaultFormats
@@ -185,7 +184,7 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
       try 
       { 
           val userInput = request.body
-          print(userInput)
+          println(userInput)
           val parsedResult = parse(userInput)
           val extractedResult = parsedResult.extract[GraphInput]
           val userName = extractedResult.user
@@ -198,7 +197,18 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
           {
               try
               {
-                  graphDB.postUserGraph(userName, nodes, links, cxn)
+                  // println(cxn.isActive())
+                  // if (!cxn.isActive())
+                  // {
+                  //     graphDB.postUserGraph(userName, nodes, links, cxn)
+                  // }
+                  // else
+                  // {
+                  //    print("establishing new connection...")
+                      val local_cxn = GraphDbConnection.getNewDbConnection()
+                      graphDB.postUserGraph(userName, nodes, links, local_cxn)
+                      local_cxn.close()
+                  //}
               }
               catch
               {
