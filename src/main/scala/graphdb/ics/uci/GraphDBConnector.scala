@@ -1,4 +1,4 @@
-package org.scalatra.example.atmosphere
+package graphdb.ics.uci.edu
 
 import java.io.File
 import org.eclipse.rdf4j.query.QueryLanguage

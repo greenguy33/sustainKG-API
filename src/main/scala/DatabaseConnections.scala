@@ -1,4 +1,4 @@
-package edu.upenn.turbo
+package graphdb.ics.uci.edu
 
 import org.eclipse.rdf4j.repository.Repository
 import org.eclipse.rdf4j.repository.RepositoryConnection

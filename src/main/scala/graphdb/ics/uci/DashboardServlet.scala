@@ -1,4 +1,4 @@
-package org.scalatra.example.atmosphere
+package graphdb.ics.uci.edu
 
 import java.util.Date
 
