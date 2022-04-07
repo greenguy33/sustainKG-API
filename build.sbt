@@ -7,7 +7,7 @@ lazy val commonSettings = Seq(
   name := "SustainKG-API"
 )
 
-val ScalatraVersion = "2.6.3"
+val ScalatraVersion = "2.6.5"
 
 lazy val app = (project in file("app")).
   settings(commonSettings: _*).
@@ -70,33 +70,39 @@ resolvers += Classpaths.typesafeReleases
 libraryDependencies ++= Seq(
   "org.scalatra" %% "scalatra" % ScalatraVersion,
   "org.scalatra" %% "scalatra-scalatest" % ScalatraVersion % "test",
-  "org.pegdown" % "pegdown" % "1.6.0" % Test, // for html reports, see <https://stackoverflow.com/questions/37056570/how-to-generate-html-reports-on-play-scalatest>
-  "ch.qos.logback" % "logback-classic" % "1.2.3",
+  //"org.pegdown" % "pegdown" % "1.6.0" % Test, // for html reports, see <https://stackoverflow.com/questions/37056570/how-to-generate-html-reports-on-play-scalatest>
+  //"ch.qos.logback" % "logback-classic" % "1.2.3",
+  "commons-logging" % "commons-logging" % "1.1.1",
   "org.eclipse.jetty" % "jetty-webapp" % "9.4.9.v20180320" % "container;compile",
   "javax.servlet" % "javax.servlet-api" % "3.1.0" % "provided",
   "org.json4s" % "json4s-jackson_2.11" % "3.5.2",
-  "org.scalatra" % "scalatra-json_2.11" % "2.6.3",
+  "org.scalatra" % "scalatra-json_2.11" % "2.6.5",
+
+  // WebSockets
+  "org.scalatra" %% "scalatra-atmosphere" % "2.6.5",
+  "org.eclipse.jetty.websocket" % "websocket-server" % "9.4.6.v20170531" % "container;provided",
+  "org.scalatra" %% "scalatra-scalate" % "2.6.5",
+  "org.eclipse.jetty" %  "jetty-plus" % "9.4.6.v20170531" % "container;provided",
 
   //Neo4j
-  "org.apache.tinkerpop" % "neo4j-gremlin" % "3.3.1",
-  "org.neo4j" % "neo4j-tinkerpop-api-impl" % "0.7-3.2.3",
+  //"org.apache.tinkerpop" % "neo4j-gremlin" % "3.3.1",
+  //"org.neo4j" % "neo4j-tinkerpop-api-impl" % "0.7-3.2.3",
 
   //RDF4J
   "org.eclipse.rdf4j" % "rdf4j-model" % "2.4.0-M1",
   "org.eclipse.rdf4j" % "rdf4j-repository-api" % "2.4.0-M1",
-  "org.eclipse.rdf4j" % "rdf4j-repository-manager" % "2.4.0-M1",
+  "org.eclipse.rdf4j" % "rdf4j-repository-manager" % "2.4.0-M1"
 
   //Solr
   //"com.github.takezoe" %% "solr-scala-client" % "0.0.24",
-  "org.apache.solr" % "solr-solrj" % "8.5.2",
+  //"org.apache.solr" % "solr-solrj" % "8.5.2",
 
   // Neo4j Cypher Rest 
-  "org.neo4j.driver" % "neo4j-java-driver" % "4.1.1"
+  //"org.neo4j.driver" % "neo4j-java-driver" % "4.1.1"
 
   //"edu.upenn.pmbb" % "carnival-util" % "0.2.0"
 )
 
-enablePlugins(SbtTwirl)
 enablePlugins(ScalatraPlugin)
 
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports/html")

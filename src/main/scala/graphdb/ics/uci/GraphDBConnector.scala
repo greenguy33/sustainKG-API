@@ -1,4 +1,4 @@
-package edu.upenn.turbo
+package org.scalatra.example.atmosphere
 
 import java.io.File
 import org.eclipse.rdf4j.query.QueryLanguage
@@ -78,20 +78,286 @@ class GraphDBConnector
         sparqlResToJson(results, "all_users")
     }
 
-    def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
+    // def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
+    // {
+    //     var safeUser = userName.replace(" ","_").replace("<","").replace(">","")
+    //     // map to group account
+    //     if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
+    //     cxn.begin()
+    //     try
+    //     {
+    //         deleteUserGraph(safeUser, cxn)
+    //         val rdf = jsonToRdf(nodes, links)
+    //         val userGraph = "http://sustainkg.org/" + safeUser
+    //         val query = s"insert data { graph <$userGraph> { $rdf }}"
+    //         val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
+    //         tupleUpdate.execute()
+    //         cxn.commit()
+    //     }
+    //     catch
+    //     {
+    //         case e: Throwable => 
+    //         {
+    //             cxn.rollback()
+    //             throw new Throwable(e)
+    //         }
+    //     }
+    // }
+
+    def postMoveNode(user:String,node:String,xpos:String,ypos:String,cxn: RepositoryConnection)
     {
-        var safeUser = userName.replace(" ","_").replace("<","").replace(">","")
+        var safeUser = user.replace(" ","_").replace("<","").replace(">","")
+        val safeNode = removeIllegalCharacters(node)
         // map to group account
         if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
         cxn.begin()
         try
         {
-            deleteUserGraph(safeUser, cxn)
-            val rdf = jsonToRdf(nodes, links)
-            val userGraph = "http://sustainkg.org/" + safeUser
-            val query = s"insert data { graph <$userGraph> { $rdf }}"
+            val query = 
+                s"""DELETE{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/x_coord>?xpos.
+                            <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/y_coord>?ypos.
+                        }}
+                    INSERT{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/x_coord><http://sustainkg.org/$xpos>.
+                            <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/y_coord><http://sustainkg.org/$ypos>.
+                        }}
+                    WHERE{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/x_coord>?xpos.
+                            <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/y_coord>?ypos.
+                        }}"""
+            println(query)
             val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
             tupleUpdate.execute()
+            cxn.commit()
+        }
+        catch
+        {
+            case e: Throwable => 
+            {
+                cxn.rollback()
+                throw new Throwable(e)
+            }
+        }
+    }
+
+    def postChangeNode(user:String,oldNode:String,newNode:String,cxn: RepositoryConnection)
+    {
+        var safeUser = user.replace(" ","_").replace("<","").replace(">","")
+        val safeOldNode = removeIllegalCharacters(oldNode)
+        val safeNewNode = removeIllegalCharacters(newNode)
+        // map to group account
+        if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
+        cxn.begin()
+        try
+        {
+            val changeSubjects = 
+                s"""DELETE{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeOldNode> ?p ?o.
+                        }}
+                    INSERT{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeNewNode> ?p ?o.
+                        }}
+                    WHERE{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeOldNode> ?p ?o.
+                        }}"""
+            val changeObjects = 
+                s"""DELETE{GRAPH<http://sustainkg.org/$safeUser>{
+                            ?s ?p <https://en.wikipedia.org/wiki/$safeOldNode>.
+                        }}
+                    INSERT{GRAPH<http://sustainkg.org/$safeUser>{
+                            ?s ?p <https://en.wikipedia.org/wiki/$safeNewNode>.
+                        }}
+                    WHERE{GRAPH<http://sustainkg.org/$safeUser>{
+                            ?s ?p <https://en.wikipedia.org/wiki/$safeOldNode>.
+                        }}"""
+            println(changeSubjects)
+            println(changeObjects)
+            cxn.prepareUpdate(QueryLanguage.SPARQL, changeSubjects).execute()
+            cxn.prepareUpdate(QueryLanguage.SPARQL, changeObjects).execute()
+            cxn.commit()
+        }
+        catch
+        {
+            case e: Throwable => 
+            {
+                cxn.rollback()
+                throw new Throwable(e)
+            }
+        }
+    }
+
+    def postRemoveNode(user:String,node:String,cxn: RepositoryConnection)
+    {
+        // this currently leaves link residuals that need to be cleaned up.
+        var safeUser = user.replace(" ","_").replace("<","").replace(">","")
+        val safeNode = removeIllegalCharacters(node)
+        // map to group account
+        if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
+        cxn.begin()
+        try
+        {
+            val removeSubjects = 
+                s"""DELETE{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeNode> ?p ?o.
+                            ?p ?p1 ?o2 .
+                        }}
+                    WHERE{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeNode> ?p ?o.
+                            optional{?p ?p1 ?o2 .}
+                        }}"""
+            val removeObjects = 
+                s"""DELETE{GRAPH<http://sustainkg.org/$safeUser>{
+                            ?s ?p <https://en.wikipedia.org/wiki/$safeNode>.
+                            ?p ?p1 ?o2 .
+                        }}
+                    WHERE{GRAPH<http://sustainkg.org/$safeUser>{
+                            ?s ?p <https://en.wikipedia.org/wiki/$safeNode>.
+                            optional{?p ?p1 ?o2 .}
+                        }}"""
+            println(removeSubjects)
+            println(removeObjects)
+            cxn.prepareUpdate(QueryLanguage.SPARQL, removeSubjects).execute()
+            cxn.prepareUpdate(QueryLanguage.SPARQL, removeObjects).execute()
+            cxn.commit()
+        }
+        catch
+        {
+            case e: Throwable => 
+            {
+                cxn.rollback()
+                throw new Throwable(e)
+            }
+        }
+    }
+
+    def postRemoveLink(user:String,origin:String,target:String,label:String,cxn: RepositoryConnection)
+    {
+        var safeUser = user.replace(" ","_").replace("<","").replace(">","")
+        val safeOrigin = removeIllegalCharacters(origin)
+        val safeTarget = removeIllegalCharacters(target)
+        val safeLabel = removeIllegalCharacters(label)
+        // map to group account
+        if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
+        cxn.begin()
+        try
+        {
+            val removeLink = 
+                s"""DELETE{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeOrigin> ?p <https://en.wikipedia.org/wiki/$safeTarget>.
+                            ?p <http://sustainkg.org/label> <http://sustainkg.org/$safeLabel>.
+                            ?p ?p1 ?o .
+                        }}
+                    WHERE{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeOrigin> ?p <https://en.wikipedia.org/wiki/$safeTarget>.
+                            ?p <http://sustainkg.org/label> <http://sustainkg.org/$safeLabel>.
+                            ?p ?p1 ?o .
+                        }}"""
+            println(removeLink)
+            cxn.prepareUpdate(QueryLanguage.SPARQL, removeLink).execute()
+            cxn.commit()
+        }
+        catch
+        {
+            case e: Throwable => 
+            {
+                cxn.rollback()
+                throw new Throwable(e)
+            }
+        }
+    }
+
+    def postChangeLink(user:String,origin:String,target:String,oldLabel:String,newLabel:String,cxn: RepositoryConnection)
+    {
+        var safeUser = user.replace(" ","_").replace("<","").replace(">","")
+        val safeOrigin = removeIllegalCharacters(origin)
+        val safeTarget = removeIllegalCharacters(target)
+        val safeOldLabel = removeIllegalCharacters(oldLabel)
+        val safeNewLabel = removeIllegalCharacters(newLabel)
+        // map to group account
+        if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
+        cxn.begin()
+        try
+        {
+            val changeLink = 
+                s"""DELETE{GRAPH<http://sustainkg.org/$safeUser>{
+                            ?p <http://sustainkg.org/label> <http://sustainkg.org/$safeOldLabel>.
+                        }}
+                    INSERT{GRAPH<http://sustainkg.org/$safeUser>{
+                            ?p <http://sustainkg.org/label> <http://sustainkg.org/$safeNewLabel>.
+                        }}
+                    WHERE{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeOrigin> ?p <https://en.wikipedia.org/wiki/$safeTarget>.
+                            ?p <http://sustainkg.org/label> <http://sustainkg.org/$safeOldLabel>.
+                        }}"""
+            println(changeLink)
+            cxn.prepareUpdate(QueryLanguage.SPARQL, changeLink).execute()
+            cxn.commit()
+        }
+        catch
+        {
+            case e: Throwable => 
+            {
+                cxn.rollback()
+                throw new Throwable(e)
+            }
+        }
+    }
+
+    def postAddLink(user:String,origin:String,target:String,label:String,citation:String,cxn: RepositoryConnection)
+    {
+        var safeUser = user.replace(" ","_").replace("<","").replace(">","")
+        val safeOrigin = removeIllegalCharacters(origin)
+        val safeTarget = removeIllegalCharacters(target)
+        val safeLabel = removeIllegalCharacters(label)
+        val uniqueId = UUID.randomUUID().toString.replace("-","")
+        // map to group account
+        if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
+        var citationRdf = ""
+        if (citation != "")
+        {
+            citationRdf = s"<http://sustainkg.org/$uniqueId><http://sustainkg.org/citation><http://sustainkg.org/$citation>."
+        }
+        cxn.begin()
+        try
+        {
+            val addLink = 
+                // needs to manage citation
+                s"""INSERT DATA{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeOrigin><http://sustainkg.org/$uniqueId><https://en.wikipedia.org/wiki/$safeTarget>.
+                            <http://sustainkg.org/$uniqueId><http://sustainkg.org/label><http://sustainkg.org/$safeLabel>.
+                            $citationRdf
+                        }}"""
+            println(addLink)
+            cxn.prepareUpdate(QueryLanguage.SPARQL, addLink).execute()
+            cxn.commit()
+        }
+        catch
+        {
+            case e: Throwable => 
+            {
+                cxn.rollback()
+                throw new Throwable(e)
+            }
+        }
+    }
+
+    def postAddNode(user:String,node:String,xpos:String,ypos:String,cxn: RepositoryConnection)
+    {
+        var safeUser = user.replace(" ","_").replace("<","").replace(">","")
+        val safeNode = removeIllegalCharacters(node)
+        // map to group account
+        if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
+        cxn.begin()
+        try
+        {
+            val addLink = 
+                s"""INSERT DATA{GRAPH<http://sustainkg.org/$safeUser>{
+                            <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/x_coord><http://sustainkg.org/$xpos>.
+                            <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/y_coord><http://sustainkg.org/$ypos>.
+                        }}"""
+            println(addLink)
+            cxn.prepareUpdate(QueryLanguage.SPARQL, addLink).execute()
             cxn.commit()
         }
         catch
@@ -241,6 +507,7 @@ class GraphDBConnector
         var linkCount = 0
         for (row <- res)
         {
+            // if it's a link
             if (!row(0).startsWith("https://en.wikipedia.org/wiki/"))
             {
                 if (linkPropMap.contains(row(0)))
@@ -252,6 +519,7 @@ class GraphDBConnector
                     linkPropMap += row(0) -> HashMap(row(1) -> row(2))
                 }
             }
+            // if it's a node
             else
             {
                 if (row(1) == "http://sustainkg.org/x_coord" || row(1) == "http://sustainkg.org/y_coord")
@@ -278,20 +546,21 @@ class GraphDBConnector
         // }
         for (row <- res)
         {
-            if (row(0).startsWith("https://en.wikipedia.org/wiki/") && row(2).startsWith("https://en.wikipedia.org/wiki/"))
+            // process nodes
+            if (row(0).startsWith("https://en.wikipedia.org/wiki/") && !row(2).startsWith("https://en.wikipedia.org/wiki/"))
             {
-                val classIndices = Array(0,2)
-                for (i <- classIndices)
+                if (!classIdMap.contains(row(0)))
                 {
-                    if (!classIdMap.contains(row(i)))
-                    {
-                        classIdMap += row(i) -> classCount
-                        val classSuffix = addIllegalCharacters(row(i).replace("https://en.wikipedia.org/wiki/","")).replaceAll("_", " ")
-                        classString += "{\"type\":\"node\",\"id\":\""+classCount.toString+"\",\"label\":\"Concept\",\"properties\":{\"name\":\""+classSuffix+"\"},\n" +
-                                        "\"x\":\""+nodePropMap(classSuffix)("http://sustainkg.org/x_coord") + "\", \"y\":\""+nodePropMap(classSuffix)("http://sustainkg.org/y_coord") + "\"},"
-                        classCount = classCount + 1
-                    }
+                    classIdMap += row(0) -> classCount
+                    val classSuffix = addIllegalCharacters(row(0).replace("https://en.wikipedia.org/wiki/","")).replaceAll("_", " ")
+                    classString += "{\"type\":\"node\",\"id\":\""+classCount.toString+"\",\"label\":\"Concept\",\"properties\":{\"name\":\""+classSuffix+"\"}," +
+                                    "\"x\":\""+nodePropMap(classSuffix)("http://sustainkg.org/x_coord") + "\", \"y\":\""+nodePropMap(classSuffix)("http://sustainkg.org/y_coord") + "\"},"
+                    classCount = classCount + 1
                 }
+            }
+            // process links
+            else if (row(0).startsWith("https://en.wikipedia.org/wiki/") && row(2).startsWith("https://en.wikipedia.org/wiki/"))
+            {
                 var citation = ""
                 var linkSuffix = ""
                 val linkProps = linkPropMap(row(1))
@@ -328,51 +597,13 @@ class GraphDBConnector
             }"""
     }
 
-    def jsonToRdf(nodes: Array[Object], links: Array[Object]): String =
-    {
-        var rdf = ""
-        val classIdMap = new HashMap[String, String]
-        for (map <- nodes)
-        {
-            val asMap = map.asInstanceOf[Map[String,Object]]
-            val propMap = asMap("properties").asInstanceOf[Map[String,String]]
-            classIdMap += asMap("id").asInstanceOf[String] -> propMap("name").asInstanceOf[String]
-            val x_coord = asMap("x").asInstanceOf[String]
-            val y_coord = asMap("y").asInstanceOf[String]
-            rdf += "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(propMap("name").asInstanceOf[String].replace(" ", "_")) +
-            "> <http://sustainkg.org/x_coord> <http://sustainkg.org/" + x_coord + "> . \n" +
-            "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(propMap("name").asInstanceOf[String].replace(" ", "_")) +
-            "> <http://sustainkg.org/y_coord> <http://sustainkg.org/" + y_coord + "> . \n"
-        }
-        for (map <- links)
-        {
-            val uniqueId = UUID.randomUUID().toString.replace("-","")
-            val asMap = map.asInstanceOf[Map[String,Object]]
-            val linkLabel = asMap("label").asInstanceOf[String]
-            val startNode = asMap("source").asInstanceOf[String]
-            val endNode = asMap("target").asInstanceOf[String]
-            var citation = ""
-            if (asMap.contains("citation"))
-            {
-                citation = asMap("citation").asInstanceOf[String]
-            }
-            rdf += "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(startNode).replace(" ", "_")) +
-                "> <http://sustainkg.org/"+uniqueId +"> <https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(endNode).replace(" ", "_"))+"> . \n"+
-                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/label> <http://sustainkg.org/"+linkLabel.replace(" ", "_")+"> . \n"
-            if (citation != "")
-            {
-                rdf += "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/citation> <http://sustainkg.org/"+citation+"> . \n"
-            }
-        }
-        rdf
-    }
-
     def removeIllegalCharacters(replace: String): String =
     {
         var newString = replace.replaceAll("%","__percent__")
         newString = newString.replaceAll("\"","__double_quote__")
         newString = newString.replaceAll("\\^","__carrot__")
         newString = newString.replaceAll("\\\\","__backslash__")
+        newString = newString.replaceAll(" ", "_")
         newString.replaceAll("`","__dash__")
     }
 

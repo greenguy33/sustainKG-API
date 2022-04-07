@@ -1,17 +1,16 @@
-package edu.upenn.turbo
+package org.scalatra.example.atmosphere
 
-import org.scalatra._
-/*import org.json4s.{DefaultFormats, Formats}
-import org.scalatra.json._
+import java.util.Date
+
+import org.json4s.JsonDSL._
 import org.json4s._
-import org.json4s.JsonDSL._*/
-import org.json4s.MappingException
-import java.nio.file.NoSuchFileException
+import org.scalatra._
+import org.scalatra.atmosphere._
+import org.scalatra.json.{JValueResult, JacksonJsonSupport}
+import org.scalatra.scalate.ScalateSupport
 
-import java.nio.file.{Files, Paths}
-import java.nio.file.attribute.BasicFileAttributes
+import scala.concurrent.ExecutionContext.Implicits.global
 
-// RDF4J imports
 import org.eclipse.rdf4j.rio._
 import org.eclipse.rdf4j.repository.Repository
 import org.eclipse.rdf4j.repository.RepositoryConnection
@@ -28,47 +27,89 @@ import org.eclipse.rdf4j.model.Value
 import org.eclipse.rdf4j.model.IRI
 import org.eclipse.rdf4j.rio.RDFFormat
 
-import org.json4s.{DefaultFormats, Formats}
-import org.scalatra.json._
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 
-import org.slf4j.LoggerFactory
+case class LoginInfo(user:String,password:String)
+case class UserName(user:String)
+case class postMoveNodeInput(user:String,node:String,xpos:String,ypos:String)
+case class postAddLinkInput (user:String,origin:String,target:String,label:String,citation:String)
+case class postRemoveLinkInput(user:String,origin:String,target:String,label:String)
+case class postChangeLinkInput(user:String,origin:String,target:String,oldLabel:String,newLabel:String)
+case class postRemoveNodeInput(user:String,node:String)
+case class postChangeNodeInput(user:String,oldNode:String,newNode:String)
+case class postAddNodeInput(user:String,node:String,xpos:String,ypos:String)
 
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.HashMap
-import java.io.File
-import java.util.ArrayList
+class DashboardServlet extends ScalatraServlet 
+  with ScalateSupport with JValueResult 
+  with JacksonJsonSupport with SessionSupport 
+  with AtmosphereSupport {
 
-import org.apache.solr.client.solrj._
-import org.apache.solr.client.solrj.impl.HttpSolrClient
+  implicit protected val jsonFormats: Formats = DefaultFormats
 
-import org.neo4j.driver.exceptions.ServiceUnavailableException
-
-case class LoginInfo(user: String, password: String)
-case class UserName(user: String)
-case class GraphInput(user: String, nodes: Array[Object], links: Array[Object])
-case class NodeInput(node: String)
-
-class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with DashboardProperties
-{
   val graphDB: GraphDBConnector = new GraphDBConnector
   val cxn = GraphDbConnection.getDbConnection()
-  val logger = LoggerFactory.getLogger("turboAPIlogger")
 
-  protected implicit val jsonFormats: Formats = DefaultFormats
-  before()
+  get("/") {
+    contentType="text/html"
+    ssp("/index")
+  }
+
+  // post("/updateCitation")
+  // {
+    
+  // }
+
+  post("/createNewUser")
   {
-      contentType = formats("json")
+      println("Received a new user request")
+      try 
+      { 
+          val userInput = request.body
+          val extractedResult = parse(userInput).extract[LoginInfo]
+          val userName = extractedResult.user
+          val pw = extractedResult.password
+          print(userInput)
+          
+          if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
+          else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
+          else
+          {
+              try
+              {
+                  val res = graphDB.createNewUser(userName, pw, cxn)
+                  if (res == "User exists")
+                  {
+                      val noContentMessage = "User \"" + userName + "\" already exists"
+                      NoContent(Map("message" -> noContentMessage))
+                  }
+                  else Ok(Map("message" -> res))
+              }
+              catch
+              {
+                  case e: RuntimeException => 
+                  {
+                      e.printStackTrace()
+                      InternalServerError(Map("message" -> e.toString()))
+                  }
+              }
+          }
+      } 
+      catch 
+      {
+          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
+          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
+          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
+      }
   }
 
   post("/checkUserCredentials")
   {
-      logger.info("Received a login request")
+      println("Received a login request")
       try 
       { 
           val userInput = request.body
-          logger.info("received: " + userInput)
+          println("received: " + userInput)
           val extractedResult = parse(userInput).extract[LoginInfo]
           val userName = extractedResult.user
           val pw = extractedResult.password
@@ -114,14 +155,14 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
   For now just using comments to remove the password requirement.*/
   post("/getUserGraph")
   {
-      logger.info("Received a post request")
+      println("Received a post request")
       try 
       { 
           val userInput = request.body
-          logger.info("received: " + userInput)
+          println("received: " + userInput)
           val extractedResult = parse(userInput).extract[UserName]
           val userName = extractedResult.user
-          logger.info("getting graph for user: " + userName)
+          println("getting graph for user: " + userName)
 
           if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
           //else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
@@ -161,183 +202,318 @@ class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with Dash
       }
   }
 
-  get("/getCollectiveGraph")
+  atmosphere("/postAddLink")
   {
-      logger.info("Received a get request")
-      try
-      {
-          graphDB.getCollectiveGraph(cxn)
-      }
-      catch
-      {
-          case e: RuntimeException => 
+      new AtmosphereClient {
+        def receive: AtmoReceive = {
+          case JsonMessage(json) => 
           {
-              e.printStackTrace()
-              InternalServerError(Map("message" -> e.toString()))
+            try
+            { 
+                val userInput = request.body
+                println(userInput)
+                val parsedResult = parse(userInput)
+                val extractedResult = parsedResult.extract[postAddLinkInput]
+                println("Received a postAddLink request from user " + extractedResult.user)
+                if (extractedResult.user.size == 0) send("Unable to parse username")
+                else
+                {
+                    try
+                    {
+                        val local_cxn = GraphDbConnection.getNewDbConnection()
+                        graphDB.postAddLink(extractedResult.user,extractedResult.origin,extractedResult.target,extractedResult.label,extractedResult.citation,local_cxn)
+                        local_cxn.close()
+                        broadcast(userInput)
+                    }
+                    catch
+                    {
+                        case e: RuntimeException => 
+                        {
+                            e.printStackTrace()
+                            send(e.toString())
+                        }
+                    }
+                }
+            } 
+            catch 
+            {
+                case e1: JsonParseException => send("Unable to parse JSON")
+                case e2: MappingException => send("Unable to parse JSON")
+                case e3: JsonMappingException => send("Did not receive any content in the request body")
+            }
           }
-      }
+      }}
   }
 
-  post("/postUserGraph")
+  atmosphere("/postRemoveLink")
   {
-      logger.info("Received a post request")
-      try 
-      { 
-          val userInput = request.body
-          println(userInput)
-          val parsedResult = parse(userInput)
-          val extractedResult = parsedResult.extract[GraphInput]
-          val userName = extractedResult.user
-          val nodes = extractedResult.nodes
-          val links = extractedResult.links
-          logger.info("posting graph for user: " + userName)
-
-          if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else
+      new AtmosphereClient {
+        def receive: AtmoReceive = {
+          case JsonMessage(json) => 
           {
-              try
-              {
-                  // println(cxn.isActive())
-                  // if (!cxn.isActive())
-                  // {
-                  //     graphDB.postUserGraph(userName, nodes, links, cxn)
-                  // }
-                  // else
-                  // {
-                  //    print("establishing new connection...")
-                      val local_cxn = GraphDbConnection.getNewDbConnection()
-                      graphDB.postUserGraph(userName, nodes, links, local_cxn)
-                      local_cxn.close()
-                  //}
-              }
-              catch
-              {
-                  case e: RuntimeException => 
-                  {
-                      e.printStackTrace()
-                      InternalServerError(Map("message" -> e.toString()))
-                  }
-              }
+            try
+            { 
+                val userInput = request.body
+                println(userInput)
+                val parsedResult = parse(userInput)
+                val extractedResult = parsedResult.extract[postRemoveLinkInput]
+                println("Received a postRemoveLink request from user " + extractedResult.user)
+                if (extractedResult.user.size == 0) send("Unable to parse username")
+                else
+                {
+                    try
+                    {
+                        val local_cxn = GraphDbConnection.getNewDbConnection()
+                        graphDB.postRemoveLink(extractedResult.user,extractedResult.origin,extractedResult.target,extractedResult.label,local_cxn)
+                        local_cxn.close()
+                        broadcast(userInput)
+                    }
+                    catch
+                    {
+                        case e: RuntimeException => 
+                        {
+                            e.printStackTrace()
+                            send(e.toString())
+                        }
+                    }
+                }
+            } 
+            catch 
+            {
+                case e1: JsonParseException => send("Unable to parse JSON")
+                case e2: MappingException => send("Unable to parse JSON")
+                case e3: JsonMappingException => send("Did not receive any content in the request body")
+            }
           }
-      } 
-      catch 
-      {
-          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
-      }
+      }}
   }
 
-  post("/createNewUser")
+  atmosphere("/postChangeLink")
   {
-      logger.info("Received a new user request")
-      try 
-      { 
-          val userInput = request.body
-          val extractedResult = parse(userInput).extract[LoginInfo]
-          val userName = extractedResult.user
-          val pw = extractedResult.password
-          print(userInput)
-          
-          if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else
+      new AtmosphereClient {
+        def receive: AtmoReceive = {
+          case JsonMessage(json) => 
           {
-              try
-              {
-                  val res = graphDB.createNewUser(userName, pw, cxn)
-                  if (res == "User exists")
-                  {
-                      val noContentMessage = "User \"" + userName + "\" already exists"
-                      NoContent(Map("message" -> noContentMessage))
-                  }
-                  else Ok(Map("message" -> res))
-              }
-              catch
-              {
-                  case e: RuntimeException => 
-                  {
-                      e.printStackTrace()
-                      InternalServerError(Map("message" -> e.toString()))
-                  }
-              }
+            try
+            { 
+                val userInput = request.body
+                println(userInput)
+                val parsedResult = parse(userInput)
+                val extractedResult = parsedResult.extract[postChangeLinkInput]
+                println("Received a postChangeLink request from user " + extractedResult.user)
+                if (extractedResult.user.size == 0) send("Unable to parse username")
+                else
+                {
+                    try
+                    {
+                        val local_cxn = GraphDbConnection.getNewDbConnection()
+                        graphDB.postChangeLink(extractedResult.user,extractedResult.origin,extractedResult.target,extractedResult.oldLabel,extractedResult.newLabel,local_cxn)
+                        local_cxn.close()
+                        broadcast(userInput)
+                    }
+                    catch
+                    {
+                        case e: RuntimeException => 
+                        {
+                            e.printStackTrace()
+                            send(e.toString())
+                        }
+                    }
+                }
+            } 
+            catch 
+            {
+                case e1: JsonParseException => send("Unable to parse JSON")
+                case e2: MappingException => send("Unable to parse JSON")
+                case e3: JsonMappingException => send("Did not receive any content in the request body")
+            }
           }
-      } 
-      catch 
-      {
-          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
-      }
+      }}
   }
 
-  get("/getAllConcepts")
+  atmosphere("/postAddNode")
   {
-      logger.info("Received a get request")
-      try
-      {
-          graphDB.getAllConcepts(cxn)
-      }
-      catch
-      {
-          case e: RuntimeException => 
+      new AtmosphereClient {
+        def receive: AtmoReceive = {
+          case JsonMessage(json) => 
           {
-              e.printStackTrace()
-              InternalServerError(Map("message" -> e.toString()))
+            try
+            { 
+                val userInput = request.body
+                println(userInput)
+                val parsedResult = parse(userInput)
+                val extractedResult = parsedResult.extract[postAddNodeInput]
+                println("Received a postAddNode request from user " + extractedResult.user)
+                if (extractedResult.user.size == 0) send("Unable to parse username")
+                else
+                {
+                    try
+                    {
+                        val local_cxn = GraphDbConnection.getNewDbConnection()
+                        graphDB.postAddNode(extractedResult.user,extractedResult.node,extractedResult.xpos,extractedResult.ypos,local_cxn)
+                        local_cxn.close()
+                        broadcast(userInput)
+                    }
+                    catch
+                    {
+                        case e: RuntimeException => 
+                        {
+                            e.printStackTrace()
+                            send(e.toString())
+                        }
+                    }
+                }
+            } 
+            catch 
+            {
+                case e1: JsonParseException => send("Unable to parse JSON")
+                case e2: MappingException => send("Unable to parse JSON")
+                case e3: JsonMappingException => send("Did not receive any content in the request body")
+            }
           }
-      }
+      }}
   }
 
-  post("/getAllNodeConnections")
+  atmosphere("/postRemoveNode")
   {
-      logger.info("Received a post request")
-      try 
-      { 
-          val userInput = request.body
-          logger.info("received: " + userInput)
-          val extractedResult = parse(userInput).extract[NodeInput]
-          val node = extractedResult.node
-          logger.info("getting links for node: " + node)
-
-          if (node.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else
+      new AtmosphereClient {
+        def receive: AtmoReceive = {
+          case JsonMessage(json) => 
           {
-              try
-              {
-                  graphDB.getAllNodeConnections(node, cxn)
-              }
-              catch
-              {
-                  case e: RuntimeException => 
-                  {
-                      e.printStackTrace()
-                      InternalServerError(Map("message" -> e.toString()))
-                  }
-              }
+            try
+            { 
+                val userInput = request.body
+                println(userInput)
+                val parsedResult = parse(userInput)
+                val extractedResult = parsedResult.extract[postRemoveNodeInput]
+                println("Received a postRemoveNode request from user " + extractedResult.user)
+                if (extractedResult.user.size == 0) send("Unable to parse username")
+                else
+                {
+                    try
+                    {
+                        val local_cxn = GraphDbConnection.getNewDbConnection()
+                        graphDB.postRemoveNode(extractedResult.user,extractedResult.node,local_cxn)
+                        local_cxn.close()
+                        broadcast(userInput)
+                    }
+                    catch
+                    {
+                        case e: RuntimeException => 
+                        {
+                            e.printStackTrace()
+                            send(e.toString())
+                        }
+                    }
+                }
+            } 
+            catch 
+            {
+                case e1: JsonParseException => send("Unable to parse JSON")
+                case e2: MappingException => send("Unable to parse JSON")
+                case e3: JsonMappingException => send("Did not receive any content in the request body")
+            }
           }
-      } 
-      catch 
-      {
-          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
-      }
+      }}
   }
 
-  get("/getGraphStatistics")
+  atmosphere("/postMoveNode")
   {
-      logger.info("Received a get request")
-      try
-      {
-          graphDB.getGraphStatistics(cxn)
-      }
-      catch
-      {
-          case e: RuntimeException => 
+      new AtmosphereClient {
+        def receive: AtmoReceive = {
+          case JsonMessage(json) => 
           {
-              e.printStackTrace()
-              InternalServerError(Map("message" -> e.toString()))
+            try
+            { 
+                val userInput = request.body
+                println(userInput)
+                val parsedResult = parse(userInput)
+                val extractedResult = parsedResult.extract[postMoveNodeInput]
+                println("Received a postMoveNode request from user " + extractedResult.user)
+                if (extractedResult.user.size == 0) send("Unable to parse username")
+                else
+                {
+                    try
+                    {
+                        val local_cxn = GraphDbConnection.getNewDbConnection()
+                        graphDB.postMoveNode(extractedResult.user,extractedResult.node,extractedResult.xpos,extractedResult.ypos,local_cxn)
+                        local_cxn.close()
+                        broadcast(userInput)
+                    }
+                    catch
+                    {
+                        case e: RuntimeException => 
+                        {
+                            e.printStackTrace()
+                            send(e.toString())
+                        }
+                    }
+                }
+            } 
+            catch 
+            {
+                case e1: JsonParseException => send("Unable to parse JSON")
+                case e2: MappingException => send("Unable to parse JSON")
+                case e3: JsonMappingException => send("Did not receive any content in the request body")
+            }
           }
-      }
+      }}
+  }
+
+  atmosphere("/postChangeNode")
+  {
+      new AtmosphereClient {
+        def receive: AtmoReceive = {
+          case JsonMessage(json) => 
+          {
+            try
+            { 
+                val userInput = request.body
+                println(userInput)
+                val parsedResult = parse(userInput)
+                val extractedResult = parsedResult.extract[postChangeNodeInput]
+                println("Received a postChangeNode request from user " + extractedResult.user)
+                if (extractedResult.user.size == 0) send("Unable to parse username")
+                else
+                {
+                    try
+                    {
+                        val local_cxn = GraphDbConnection.getNewDbConnection()
+                        graphDB.postChangeNode(extractedResult.user,extractedResult.oldNode,extractedResult.newNode,local_cxn)
+                        local_cxn.close()
+                        broadcast(userInput)
+                    }
+                    catch
+                    {
+                        case e: RuntimeException => 
+                        {
+                            e.printStackTrace()
+                            send(e.toString())
+                        }
+                    }
+                }
+            } 
+            catch 
+            {
+                case e1: JsonParseException => send("Unable to parse JSON")
+                case e2: MappingException => send("Unable to parse JSON")
+                case e3: JsonMappingException => send("Did not receive any content in the request body")
+            }
+          }
+      }}
+  }
+
+  error {
+    case t: Throwable => t.printStackTrace()
+  }
+
+  notFound {
+    // remove content type in case it was set through an action
+    contentType = null
+    // Try to render a ScalateTemplate if no route matched
+    findTemplate(requestPath) map { path =>
+      contentType = "text/html"
+      layoutTemplate(path)
+    } orElse serveStaticResource() getOrElse resourceNotFound()
   }
 }
