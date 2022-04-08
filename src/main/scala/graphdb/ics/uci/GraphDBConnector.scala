@@ -78,31 +78,31 @@ class GraphDBConnector
         sparqlResToJson(results, "all_users")
     }
 
-    // def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
-    // {
-    //     var safeUser = userName.replace(" ","_").replace("<","").replace(">","")
-    //     // map to group account
-    //     if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
-    //     cxn.begin()
-    //     try
-    //     {
-    //         deleteUserGraph(safeUser, cxn)
-    //         val rdf = jsonToRdf(nodes, links)
-    //         val userGraph = "http://sustainkg.org/" + safeUser
-    //         val query = s"insert data { graph <$userGraph> { $rdf }}"
-    //         val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
-    //         tupleUpdate.execute()
-    //         cxn.commit()
-    //     }
-    //     catch
-    //     {
-    //         case e: Throwable => 
-    //         {
-    //             cxn.rollback()
-    //             throw new Throwable(e)
-    //         }
-    //     }
-    // }
+    def postUserGraph(userName: String, nodes: Array[Object], links: Array[Object], cxn: RepositoryConnection)
+    {
+        var safeUser = userName.replace(" ","_").replace("<","").replace(">","")
+        // map to group account
+        if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
+        cxn.begin()
+        try
+        {
+            deleteUserGraph(safeUser, cxn)
+            val rdf = jsonToRdf(nodes, links)
+            val userGraph = "http://sustainkg.org/" + safeUser
+            val query = s"insert data { graph <$userGraph> { $rdf }}"
+            val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
+            tupleUpdate.execute()
+            cxn.commit()
+        }
+        catch
+        {
+            case e: Throwable => 
+            {
+                cxn.rollback()
+                throw new Throwable(e)
+            }
+        }
+    }
 
     def postMoveNode(user:String,node:String,xpos:String,ypos:String,cxn: RepositoryConnection)
     {
@@ -553,7 +553,7 @@ class GraphDBConnector
                 {
                     classIdMap += row(0) -> classCount
                     val classSuffix = addIllegalCharacters(row(0).replace("https://en.wikipedia.org/wiki/","")).replaceAll("_", " ")
-                    classString += "{\"type\":\"node\",\"id\":\""+classCount.toString+"\",\"label\":\"Concept\",\"properties\":{\"name\":\""+classSuffix+"\"}," +
+                    classString += "{\"type\":\"node\",\"id\":\""+classCount.toString+"\",\"label\":\"Concept\",\"properties\":{\"name\":\""+classSuffix+"\"},\n" +
                                     "\"x\":\""+nodePropMap(classSuffix)("http://sustainkg.org/x_coord") + "\", \"y\":\""+nodePropMap(classSuffix)("http://sustainkg.org/y_coord") + "\"},"
                     classCount = classCount + 1
                 }
@@ -631,5 +631,44 @@ class GraphDBConnector
             }
         }
         map
+    }
+
+    def jsonToRdf(nodes: Array[Object], links: Array[Object]): String =
+    {
+        var rdf = ""
+        val classIdMap = new HashMap[String, String]
+        for (map <- nodes)
+        {
+            val asMap = map.asInstanceOf[Map[String,Object]]
+            val propMap = asMap("properties").asInstanceOf[Map[String,String]]
+            classIdMap += asMap("id").asInstanceOf[String] -> propMap("name").asInstanceOf[String]
+            val x_coord = asMap("x").asInstanceOf[String]
+            val y_coord = asMap("y").asInstanceOf[String]
+            rdf += "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(propMap("name").asInstanceOf[String].replace(" ", "_")) +
+            "> <http://sustainkg.org/x_coord> <http://sustainkg.org/" + x_coord + "> . \n" +
+            "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(propMap("name").asInstanceOf[String].replace(" ", "_")) +
+            "> <http://sustainkg.org/y_coord> <http://sustainkg.org/" + y_coord + "> . \n"
+        }
+        for (map <- links)
+        {
+            val uniqueId = UUID.randomUUID().toString.replace("-","")
+            val asMap = map.asInstanceOf[Map[String,Object]]
+            val linkLabel = asMap("label").asInstanceOf[String]
+            val startNode = asMap("source").asInstanceOf[String]
+            val endNode = asMap("target").asInstanceOf[String]
+            var citation = ""
+            if (asMap.contains("citation"))
+            {
+                citation = asMap("citation").asInstanceOf[String]
+            }
+            rdf += "<https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(startNode).replace(" ", "_")) +
+                "> <http://sustainkg.org/"+uniqueId +"> <https://en.wikipedia.org/wiki/"+removeIllegalCharacters(classIdMap(endNode).replace(" ", "_"))+"> . \n"+
+                "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/label> <http://sustainkg.org/"+linkLabel.replace(" ", "_")+"> . \n"
+            if (citation != "")
+            {
+                rdf += "<http://sustainkg.org/"+uniqueId+"> <http://sustainkg.org/citation> <http://sustainkg.org/"+citation+"> . \n"
+            }
+        }
+        rdf
     }
 }
