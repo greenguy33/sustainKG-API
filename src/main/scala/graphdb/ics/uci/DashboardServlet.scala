@@ -30,6 +30,8 @@ import org.eclipse.rdf4j.rio.RDFFormat
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 
+import org.scalatra.CorsSupport
+
 case class LoginInfo(user:String,password:String)
 case class UserName(user:String)
 case class postMoveNodeInput(user:String,node:String,xpos:String,ypos:String)
@@ -45,15 +47,20 @@ case class NodeInput(node: String)
 class DashboardServlet extends ScalatraServlet 
   with ScalateSupport with JValueResult 
   with JacksonJsonSupport with SessionSupport 
-  with AtmosphereSupport 
+  with AtmosphereSupport with CorsSupport
 {
   val graphDB: GraphDBConnector = new GraphDBConnector
   val cxn = GraphDbConnection.getDbConnection()
 
   protected implicit val jsonFormats: Formats = DefaultFormats
+  
   before()
   {
       contentType = formats("json")
+  }
+
+  options("/*"){
+    response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"))
   }
 
   atmosphere("/postAddLink")
@@ -292,6 +299,7 @@ class DashboardServlet extends ScalatraServlet
                         val local_cxn = GraphDbConnection.getNewDbConnection()
                         graphDB.postMoveNode(extractedResult.user,extractedResult.node,extractedResult.xpos,extractedResult.ypos,local_cxn)
                         local_cxn.close()
+                        send(userInput)
                         broadcast(userInput)
                     }
                     catch
@@ -621,10 +629,14 @@ class DashboardServlet extends ScalatraServlet
 
   get("/getGraphStatistics")
   {
+      val headers = Map("Access-Control-Allow-Origin" -> "*",
+                    "Access-Control-Allow-Methods" -> "POST, GET, OPTIONS, DELETE",
+                    "Access-Control-Max-Age" -> "3600",
+                    "Access-Control-Allow-Headers" -> "x-requested-with, content-type")
       println("Received a get request")
       try
       {
-          graphDB.getGraphStatistics(cxn)
+          Ok(graphDB.getGraphStatistics(cxn),headers)
       }
       catch
       {
