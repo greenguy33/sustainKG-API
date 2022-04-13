@@ -1,4 +1,4 @@
-package graphdb.ics.uci.edu
+package org.scalatra.example.atmosphere
 
 import org.eclipse.rdf4j.repository.Repository
 import org.eclipse.rdf4j.repository.RepositoryConnection

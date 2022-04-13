@@ -1,4 +1,4 @@
-import graphdb.ics.uci.edu._
+import org.scalatra.example.atmosphere._
 
 import org.scalatra._
 import javax.servlet.ServletContext
@@ -57,7 +57,7 @@ class ScalatraBootstrap extends LifeCycle {
 
     println("established connection to repository "+ repoName)
     context.mount(new DashboardServlet, "/*")
-  	println("""
+    println("""
 
                                                                                                                                
                                                                                                                                

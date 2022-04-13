@@ -1,29 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
 <configuration>
-
-<property name="LOG_DIR" value="logging//" />
-
-  <appender name="default.console" class="ch.qos.logback.core.ConsoleAppender">
-    <layout class="ch.qos.logback.classic.PatternLayout">
-      <Pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</Pattern>
-    </layout>
-  </appender>
-
-  <appender name="default.file" class="ch.qos.logback.core.FileAppender">
-      <file>${LOG_DIR}/turboAPI.log</file>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <!-- encoders are assigned the type
+         ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
     <encoder>
       <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
-  </appender> 
-    
-  <logger name="turboAPIlogger" level="INFO">
-      <appender-ref ref="default.console" />
-      <appender-ref ref="default.file" />
-  </logger>
+  </appender>
 
-  <root level="INFO">
-    <appender-ref ref="ROOT" />
+  <root level="info">
+    <appender-ref ref="STDOUT" />
   </root>
-
 </configuration>

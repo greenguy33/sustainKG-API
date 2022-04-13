@@ -1,7 +1,2 @@
-resolvers += Resolver.url("artifactory",url("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases"))(Resolver.ivyStylePatterns)
-
-addSbtPlugin("com.typesafe.sbt" % "sbt-twirl" % "1.3.13")
-addSbtPlugin("org.scalatra.sbt" % "sbt-scalatra" % "1.0.2")
-addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "5.2.2")
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.7")
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.2")
+addSbtPlugin("org.scalatra.sbt" % "sbt-scalatra" % "1.0.1")
+scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")

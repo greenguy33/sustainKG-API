@@ -1,4 +1,4 @@
-package graphdb.ics.uci.edu
+package org.scalatra.example.atmosphere
 
 import java.io.File
 import org.eclipse.rdf4j.query.QueryLanguage
@@ -267,13 +267,18 @@ class GraphDBConnector
         }
     }
 
-    def postChangeLink(user:String,origin:String,target:String,oldLabel:String,newLabel:String,cxn: RepositoryConnection)
+    def postChangeLink(user:String,origin:String,target:String,oldLabel:String,newLabel:String,citation:String,cxn: RepositoryConnection)
     {
         var safeUser = user.replace(" ","_").replace("<","").replace(">","")
         val safeOrigin = removeIllegalCharacters(origin)
         val safeTarget = removeIllegalCharacters(target)
         val safeOldLabel = removeIllegalCharacters(oldLabel)
         val safeNewLabel = removeIllegalCharacters(newLabel)
+        var citationRdf = ""
+        if (citation != "")
+        {
+            citationRdf = s"<http://sustainkg.org/$safeNewLabel><http://sustainkg.org/citation><http://sustainkg.org/$citation>."
+        }
         // map to group account
         if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
         cxn.begin()
@@ -285,6 +290,7 @@ class GraphDBConnector
                         }}
                     INSERT{GRAPH<http://sustainkg.org/$safeUser>{
                             ?p <http://sustainkg.org/label> <http://sustainkg.org/$safeNewLabel>.
+                            $citationRdf
                         }}
                     WHERE{GRAPH<http://sustainkg.org/$safeUser>{
                             <https://en.wikipedia.org/wiki/$safeOrigin> ?p <https://en.wikipedia.org/wiki/$safeTarget>.
