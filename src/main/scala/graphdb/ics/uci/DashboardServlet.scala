@@ -64,26 +64,24 @@ class DashboardServlet extends ScalatraServlet
             broadcast(("author" -> "Someone") ~ ("message" -> "joined the room") ~ ("time" -> (new Date().getTime.toString )), Everyone)
           case Disconnected(ClientDisconnected, _) =>
             broadcast(("author" -> "Someone") ~ ("message" -> "has left the room") ~ ("time" -> (new Date().getTime.toString )), Everyone)
-          case JsonMessage(json) => 
+          case JsonMessage(json) =>
           {
             try
             { 
-                val userInput = request.body
-                println(userInput)
-                val parsedResult = parse(userInput)
-                val extractedResult = parsedResult.extract[MethodAndData]
+                println(json)
+                val extractedResult = json.extract[MethodAndData]
                 val method = extractedResult.method
                 method match {
-                    case "addLink" => {postAddLink(extractedResult.data); broadcast(userInput)}
-                    case "moveNode" => {postMoveNode(extractedResult.data); broadcast(userInput)}
+                    case "addLink" => {postAddLink(extractedResult.data); broadcast(json)}
+                    case "moveNode" => {postMoveNode(extractedResult.data); broadcast(json)}
                     case "checkUserCredentials" => send(checkUserCredentials(extractedResult.data))
                     case "getUserGraph" => send(getUserGraph(extractedResult.data))
                     case "createNewUser" => send(createNewUser(extractedResult.data))
-                    case "removeLink" => {postRemoveLink(extractedResult.data); broadcast(userInput)}
-                    case "changeLink" => {postChangeLink(extractedResult.data); broadcast(userInput)}
-                    case "removeNode" => {postRemoveNode(extractedResult.data); broadcast(userInput)}
-                    case "changeNode" => {postChangeNode(extractedResult.data); broadcast(userInput)}
-                    case "addNode" => {postAddNode(extractedResult.data); broadcast(userInput)}
+                    case "removeLink" => {postRemoveLink(extractedResult.data); broadcast(json)}
+                    case "changeLink" => {postChangeLink(extractedResult.data); broadcast(json)}
+                    case "removeNode" => {postRemoveNode(extractedResult.data); broadcast(json)}
+                    case "changeNode" => {postChangeNode(extractedResult.data); broadcast(json)}
+                    case "addNode" => {postAddNode(extractedResult.data); broadcast(json)}
                     case _ => send("Unexpected method name in JSON")
                 }
             }
