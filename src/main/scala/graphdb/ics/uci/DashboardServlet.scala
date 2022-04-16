@@ -61,9 +61,10 @@ class DashboardServlet extends ScalatraServlet
         {
           case Connected =>
             println("Client %s is connected" format uuid)
-            broadcast(("author" -> "Someone") ~ ("message" -> "joined the room") ~ ("time" -> (new Date().getTime.toString )), Everyone)
+            //broadcast(("author" -> "Someone") ~ ("message" -> "joined the room") ~ ("time" -> (new Date().getTime.toString )), Everyone)
           case Disconnected(ClientDisconnected, _) =>
-            broadcast(("author" -> "Someone") ~ ("message" -> "has left the room") ~ ("time" -> (new Date().getTime.toString )), Everyone)
+            println("Client %s is disconnected" format uuid)
+            //broadcast(("author" -> "Someone") ~ ("message" -> "has left the room") ~ ("time" -> (new Date().getTime.toString )), Everyone)
           case JsonMessage(json) =>
           {
             try
@@ -74,7 +75,6 @@ class DashboardServlet extends ScalatraServlet
                 method match {
                     case "addLink" => {postAddLink(extractedResult.data); broadcast(json)}
                     case "moveNode" => {postMoveNode(extractedResult.data); broadcast(json)}
-                    case "checkUserCredentials" => send(checkUserCredentials(extractedResult.data))
                     case "getUserGraph" => send(getUserGraph(extractedResult.data))
                     case "createNewUser" => send(createNewUser(extractedResult.data))
                     case "removeLink" => {postRemoveLink(extractedResult.data); broadcast(json)}
@@ -82,6 +82,11 @@ class DashboardServlet extends ScalatraServlet
                     case "removeNode" => {postRemoveNode(extractedResult.data); broadcast(json)}
                     case "changeNode" => {postChangeNode(extractedResult.data); broadcast(json)}
                     case "addNode" => {postAddNode(extractedResult.data); broadcast(json)}
+                    case "checkUserCredentials" => {
+                        val res = checkUserCredentials(extractedResult.data)
+                        send(res(0))
+                        if (res(0) == "Login Successful") broadcast("User " + res(1) + " logged into the room")
+                    }
                     case _ => send("Unexpected method name in JSON")
                 }
             }
@@ -139,7 +144,7 @@ class DashboardServlet extends ScalatraServlet
      }
   }
 
-  def checkUserCredentials(data: Map[String,Object]): String =
+  def checkUserCredentials(data: Map[String,Object]): Array[String] =
   {
     try
     {
@@ -147,21 +152,13 @@ class DashboardServlet extends ScalatraServlet
         val pw = data("password").asInstanceOf[String]
         println("Received a checkUserCredentials request from user " + user)
         val res = graphDB.checkUserCredentials(user, pw, cxn)
-        if (res == "Wrong Username")
-        {
-            val noContentMessage = "User \"" + user + "\" does not exist"
-            return noContentMessage
-        }
-        else if (res == "Wrong Password")
-        {
-            val noContentMessage = "Password incorrect for user \"" + user + "\""
-            return noContentMessage
-        }
-        else return res
+        if (res == "Wrong Username") return Array("User \"" + user + "\" does not exist", user)
+        else if (res == "Wrong Password") return Array("Password incorrect for user \"" + user + "\"")
+        else return Array("Login Successful", user)
      }
      catch
      {
-        case e: RuntimeException => {e.printStackTrace; return e.toString}
+        case e: RuntimeException => {e.printStackTrace; return Array(e.toString)}
      }
   }
 
