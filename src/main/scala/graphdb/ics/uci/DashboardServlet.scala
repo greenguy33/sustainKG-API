@@ -106,13 +106,18 @@ class DashboardServlet extends ScalatraServlet
      try
      {
         val user = data("user").asInstanceOf[String]
+        assert (user != "", "User field is blank")
         val origin = data("origin").asInstanceOf[String]
+        assert (origin != "", "Origin field is blank")
         val target = data("target").asInstanceOf[String]
+        assert (target != "", "Target field is blank")
         val label = data("label").asInstanceOf[String]
+        assert (label != "", "Label field is blank")
         var citation = ""
         if (data.contains("citation"))
         {
            citation = data("citation").asInstanceOf[String]
+           assert (citation != "", "Citation field is blank")
         }
         println("Received a postAddLink request from user " + user)
         val local_cxn = GraphDbConnection.getNewDbConnection()
@@ -121,7 +126,7 @@ class DashboardServlet extends ScalatraServlet
      }
      catch
      {
-        case e: RuntimeException => e.printStackTrace
+        case e: Throwable => e.printStackTrace
      }
   }
 
@@ -130,9 +135,13 @@ class DashboardServlet extends ScalatraServlet
      try
      {
        val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
        val node = data("node").asInstanceOf[String]
+       assert (node != "", "Node field is blank")
        val xpos = data("xpos").asInstanceOf[String]
+       assert (xpos != "", "Xpos field is blank")
        val ypos = data("ypos").asInstanceOf[String]
+       assert (ypos != "", "Ypos field is blank")
        println("Received a postMoveNode request from user " + user)
        val local_cxn = GraphDbConnection.getNewDbConnection()
        graphDB.postMoveNode(user,node,xpos,ypos,local_cxn)
@@ -140,7 +149,7 @@ class DashboardServlet extends ScalatraServlet
      }
      catch
      {
-        case e: RuntimeException => e.printStackTrace
+        case e: Throwable => e.printStackTrace
      }
   }
 
@@ -149,7 +158,9 @@ class DashboardServlet extends ScalatraServlet
     try
     {
         val user = data("user").asInstanceOf[String]
+        assert (user != "", "User field is blank")
         val pw = data("password").asInstanceOf[String]
+        assert (pw != "", "Password field is blank")
         println("Received a checkUserCredentials request from user " + user)
         val res = graphDB.checkUserCredentials(user, pw, cxn)
         if (res == "Wrong Username") return Array("User \"" + user + "\" does not exist", user)
@@ -158,7 +169,7 @@ class DashboardServlet extends ScalatraServlet
      }
      catch
      {
-        case e: RuntimeException => {e.printStackTrace; return Array(e.toString)}
+        case e: Throwable => {e.printStackTrace; return Array(e.toString)}
      }
   }
 
@@ -167,6 +178,7 @@ class DashboardServlet extends ScalatraServlet
      try
      {
        val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
        println("Received a getUserGraph request from user " + user)
        val local_cxn = GraphDbConnection.getNewDbConnection()
        val graphres = graphDB.getUserGraphNoPassword(user, cxn)
@@ -175,7 +187,7 @@ class DashboardServlet extends ScalatraServlet
      }
      catch
      {
-        case e: RuntimeException => {e.printStackTrace; return e.toString}
+        case e: Throwable => {e.printStackTrace; return e.toString}
      }
   }
 
@@ -184,7 +196,9 @@ class DashboardServlet extends ScalatraServlet
     try
      {
        val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
        val pw = data("password").asInstanceOf[String]
+       assert (pw != "", "Password field is blank")
        println("Received a createNewUser request from user " + user)
        val local_cxn = GraphDbConnection.getNewDbConnection()
        val graphres = graphDB.createNewUser(user, pw, cxn)
@@ -193,7 +207,7 @@ class DashboardServlet extends ScalatraServlet
      }
      catch
      {
-        case e: RuntimeException => {e.printStackTrace; return e.toString}
+        case e: Throwable => {e.printStackTrace; return e.toString}
      }
   }
 
@@ -202,9 +216,13 @@ class DashboardServlet extends ScalatraServlet
      try
      {
        val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
        val origin = data("origin").asInstanceOf[String]
+       assert (origin != "", "Origin field is blank")
        val target = data("target").asInstanceOf[String]
+       assert (target != "", "Target field is blank")
        val label = data("label").asInstanceOf[String]
+       assert (label != "", "Label field is blank")
        println("Received a postRemoveLink request from user " + user)
        val local_cxn = GraphDbConnection.getNewDbConnection()
        graphDB.postRemoveLink(user,origin,target,label,local_cxn)
@@ -212,7 +230,7 @@ class DashboardServlet extends ScalatraServlet
      }
      catch
      {
-        case e: RuntimeException => e.printStackTrace
+        case e: Throwable => e.printStackTrace
      }
   }
 
@@ -221,7 +239,9 @@ class DashboardServlet extends ScalatraServlet
      try
      {
        val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
        val node = data("node").asInstanceOf[String]
+       assert (node != "", "Node field is blank")
        println("Received a postRemoveNode request from user " + user)
        val local_cxn = GraphDbConnection.getNewDbConnection()
        graphDB.postRemoveNode(user,node,local_cxn)
@@ -229,7 +249,7 @@ class DashboardServlet extends ScalatraServlet
      }
      catch
      {
-        case e: RuntimeException => e.printStackTrace
+        case e: Throwable => e.printStackTrace
      }
   }
 
@@ -238,14 +258,20 @@ class DashboardServlet extends ScalatraServlet
      try
      {
        val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
        val origin = data("origin").asInstanceOf[String]
+       assert (origin != "", "Origin field is blank")
        val target = data("target").asInstanceOf[String]
+       assert (target != "", "Target field is blank")
        val oldLabel = data("oldLabel").asInstanceOf[String]
+       assert (oldLabel != "", "oldLabel field is blank")
        val newLabel = data("newLabel").asInstanceOf[String]
+       assert (newLabel != "", "newLabel field is blank")
        var citation = ""
         if (data.contains("citation"))
         {
            citation = data("citation").asInstanceOf[String]
+           assert (citation != "", "Citation field is blank")
         }
        println("Received a postChangeLink request from user " + user)
        val local_cxn = GraphDbConnection.getNewDbConnection()
@@ -254,7 +280,7 @@ class DashboardServlet extends ScalatraServlet
      }
      catch
      {
-        case e: RuntimeException => e.printStackTrace
+        case e: Throwable => e.printStackTrace
      }
   }
 
@@ -263,8 +289,11 @@ class DashboardServlet extends ScalatraServlet
      try
      {
        val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
        val oldNode = data("oldNode").asInstanceOf[String]
+       assert (oldNode != "", "oldNode field is blank")
        val newNode = data("newNode").asInstanceOf[String]
+       assert (newNode != "", "newNode field is blank")
        println("Received a postChangeNode request from user " + user)
        val local_cxn = GraphDbConnection.getNewDbConnection()
        graphDB.postChangeNode(user,oldNode,newNode,local_cxn)
@@ -272,7 +301,7 @@ class DashboardServlet extends ScalatraServlet
      }
      catch
      {
-        case e: RuntimeException => e.printStackTrace
+        case e: Throwable => e.printStackTrace
      }
   }
 
@@ -281,9 +310,13 @@ class DashboardServlet extends ScalatraServlet
      try
      {
        val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
        val node = data("node").asInstanceOf[String]
+       assert (node != "", "Node field is blank")
        val xpos = data("xpos").asInstanceOf[String]
+       assert (xpos != "", "Xpos field is blank")
        val ypos = data("ypos").asInstanceOf[String]
+       assert (ypos != "", "Ypos field is blank")
        println("Received a postAddNode request from user " + user)
        val local_cxn = GraphDbConnection.getNewDbConnection()
        graphDB.postAddNode(user,node,xpos,ypos,local_cxn)
@@ -291,7 +324,7 @@ class DashboardServlet extends ScalatraServlet
      }
      catch
      {
-        case e: RuntimeException => e.printStackTrace
+        case e: Throwable => e.printStackTrace
      }
   }
 
