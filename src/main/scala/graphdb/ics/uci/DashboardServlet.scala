@@ -1,17 +1,16 @@
-package edu.upenn.turbo
+package org.scalatra.example.atmosphere
 
-import org.scalatra._
-/*import org.json4s.{DefaultFormats, Formats}
-import org.scalatra.json._
+import java.util.Date
+
+import org.json4s.JsonDSL._
 import org.json4s._
-import org.json4s.JsonDSL._*/
-import org.json4s.MappingException
-import java.nio.file.NoSuchFileException
+import org.scalatra._
+import org.scalatra.atmosphere._
+import org.scalatra.json.{JValueResult, JacksonJsonSupport}
+import org.scalatra.scalate.ScalateSupport
 
-import java.nio.file.{Files, Paths}
-import java.nio.file.attribute.BasicFileAttributes
+import scala.concurrent.ExecutionContext.Implicits.global
 
-// RDF4J imports
 import org.eclipse.rdf4j.rio._
 import org.eclipse.rdf4j.repository.Repository
 import org.eclipse.rdf4j.repository.RepositoryConnection
@@ -28,316 +27,318 @@ import org.eclipse.rdf4j.model.Value
 import org.eclipse.rdf4j.model.IRI
 import org.eclipse.rdf4j.rio.RDFFormat
 
-import org.json4s.{DefaultFormats, Formats}
-import org.scalatra.json._
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 
-import org.slf4j.LoggerFactory
+import org.scalatra.CorsSupport
 
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.HashMap
-import java.io.File
-import java.util.ArrayList
+case class MethodAndData(method:String,data:Map[String,Object])
 
-import org.apache.solr.client.solrj._
-import org.apache.solr.client.solrj.impl.HttpSolrClient
-
-import org.neo4j.driver.exceptions.ServiceUnavailableException
-
-case class LoginInfo(user: String, password: String)
-case class UserName(user: String)
-case class GraphInput(user: String, nodes: Array[Object], links: Array[Object])
-case class NodeInput(node: String)
-
-class DashboardServlet extends ScalatraServlet with JacksonJsonSupport with DashboardProperties
+class DashboardServlet extends ScalatraServlet 
+  with ScalateSupport with JValueResult 
+  with JacksonJsonSupport with SessionSupport 
+  with AtmosphereSupport with CorsSupport
 {
   val graphDB: GraphDBConnector = new GraphDBConnector
   val cxn = GraphDbConnection.getDbConnection()
-  val logger = LoggerFactory.getLogger("turboAPIlogger")
 
   protected implicit val jsonFormats: Formats = DefaultFormats
+  
   before()
   {
       contentType = formats("json")
   }
 
-  post("/checkUserCredentials")
-  {
-      logger.info("Received a login request")
-      try 
-      { 
-          val userInput = request.body
-          logger.info("received: " + userInput)
-          val extractedResult = parse(userInput).extract[LoginInfo]
-          val userName = extractedResult.user
-          val pw = extractedResult.password
+  options("/*"){
+    response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"))
+  }
 
-          if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else
-          {
-              try
-              {
-                  val res = graphDB.checkUserCredentials(userName, pw, cxn)
-                  if (res == "Wrong Username")
-                  {
-                      val noContentMessage = "User \"" + userName + "\" does not exist"
-                      NoContent(Map("message" -> noContentMessage))
-                  }
-                  else if (res == "Wrong Password")
-                  {
-                      val noContentMessage = "Password incorrect for user \"" + userName + "\""
-                      NoContent(Map("message" -> noContentMessage))
-                  }
-                  else res
-              }
-              catch
-              {
-                  case e: RuntimeException => 
-                  {
-                      e.printStackTrace()
-                      InternalServerError(Map("message" -> e.toString()))
-                  }
-              }
-          }
-      } 
-      catch 
+  atmosphere("/connectToWebsocket")
+  {
+      new AtmosphereClient 
       {
-          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
+        def receive: AtmoReceive = 
+        {
+          case Connected =>
+            println("Client %s is connected" format uuid)
+            //broadcast(("author" -> "Someone") ~ ("message" -> "joined the room") ~ ("time" -> (new Date().getTime.toString )), Everyone)
+          case Disconnected(ClientDisconnected, _) =>
+            println("Client %s is disconnected" format uuid)
+            //broadcast(("author" -> "Someone") ~ ("message" -> "has left the room") ~ ("time" -> (new Date().getTime.toString )), Everyone)
+          case JsonMessage(json) =>
+          {
+            try
+            { 
+                println(json)
+                val extractedResult = json.extract[MethodAndData]
+                val method = extractedResult.method
+                method match {
+                    case "addLink" => {postAddLink(extractedResult.data); broadcast(json)}
+                    case "moveNode" => {postMoveNode(extractedResult.data); broadcast(json)}
+                    case "getUserGraph" => send(getUserGraph(extractedResult.data))
+                    case "createNewUser" => send(createNewUser(extractedResult.data))
+                    case "removeLink" => {postRemoveLink(extractedResult.data); broadcast(json)}
+                    case "changeLink" => {postChangeLink(extractedResult.data); broadcast(json)}
+                    case "removeNode" => {postRemoveNode(extractedResult.data); broadcast(json)}
+                    case "changeNode" => {postChangeNode(extractedResult.data); broadcast(json)}
+                    case "addNode" => {postAddNode(extractedResult.data); broadcast(json)}
+                    case "checkUserCredentials" => {
+                        val res = checkUserCredentials(extractedResult.data)
+                        send(res(0))
+                        if (res(0) == "Login Successful") broadcast("User " + res(1) + " logged into the room")
+                    }
+                    case _ => send("Unexpected method name in JSON")
+                }
+            }
+            catch
+            {
+                case e1: JsonParseException => send("Unable to parse JSON")
+                case e2: MappingException => send("Unable to parse JSON")
+                case e3: JsonMappingException => send("Did not receive any content in the request body")
+            }
+          }
+        }
       }
   }
 
-  /* this route could accept input with or without a password, depending on if we are using UCI authentication.
-  For now just using comments to remove the password requirement.*/
-  post("/getUserGraph")
+  def postAddLink(data: Map[String,Object])
   {
-      logger.info("Received a post request")
-      try 
-      { 
-          val userInput = request.body
-          logger.info("received: " + userInput)
-          val extractedResult = parse(userInput).extract[UserName]
-          val userName = extractedResult.user
-          logger.info("getting graph for user: " + userName)
-
-          if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          //else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else
-          {
-              try
-              {
-                  //val res = graphDB.getUserGraph(userName, pw, cxn)
-                  graphDB.getUserGraphNoPassword(userName, cxn)
-                  /*if (res == "Wrong Username")
-                  {
-                      val noContentMessage = "User \"" + userName + "\" does not exist"
-                      NoContent(Map("message" -> noContentMessage))
-                  }
-                  else if (res == "Wrong Password")
-                  {
-                      val noContentMessage = "Password incorrect for user \"" + userName + "\""
-                      NoContent(Map("message" -> noContentMessage))
-                  }
-                  else res*/
-              }
-              catch
-              {
-                  case e: RuntimeException => 
-                  {
-                      e.printStackTrace()
-                      InternalServerError(Map("message" -> e.toString()))
-                  }
-              }
-          }
-      } 
-      catch 
-      {
-          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
-      }
+     try
+     {
+        val user = data("user").asInstanceOf[String]
+        assert (user != "", "User field is blank")
+        val origin = data("origin").asInstanceOf[String]
+        assert (origin != "", "Origin field is blank")
+        val target = data("target").asInstanceOf[String]
+        assert (target != "", "Target field is blank")
+        val label = data("label").asInstanceOf[String]
+        assert (label != "", "Label field is blank")
+        var citation = ""
+        if (data.contains("citation"))
+        {
+           citation = data("citation").asInstanceOf[String]
+           assert (citation != "", "Citation field is blank")
+        }
+        println("Received a postAddLink request from user " + user)
+        val local_cxn = GraphDbConnection.getNewDbConnection()
+        graphDB.postAddLink(user,origin,target,label,citation,local_cxn)
+        local_cxn.close()
+     }
+     catch
+     {
+        case e: Throwable => e.printStackTrace
+     }
   }
 
-  get("/getCollectiveGraph")
+  def postMoveNode(data: Map[String,Object])
   {
-      logger.info("Received a get request")
-      try
-      {
-          graphDB.getCollectiveGraph(cxn)
-      }
-      catch
-      {
-          case e: RuntimeException => 
-          {
-              e.printStackTrace()
-              InternalServerError(Map("message" -> e.toString()))
-          }
-      }
+     try
+     {
+       val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
+       val node = data("node").asInstanceOf[String]
+       assert (node != "", "Node field is blank")
+       val xpos = data("xpos").asInstanceOf[String]
+       assert (xpos != "", "Xpos field is blank")
+       val ypos = data("ypos").asInstanceOf[String]
+       assert (ypos != "", "Ypos field is blank")
+       println("Received a postMoveNode request from user " + user)
+       val local_cxn = GraphDbConnection.getNewDbConnection()
+       graphDB.postMoveNode(user,node,xpos,ypos,local_cxn)
+       local_cxn.close()
+     }
+     catch
+     {
+        case e: Throwable => e.printStackTrace
+     }
   }
 
-  post("/postUserGraph")
+  def checkUserCredentials(data: Map[String,Object]): Array[String] =
   {
-      logger.info("Received a post request")
-      try 
-      { 
-          val userInput = request.body
-          println(userInput)
-          val parsedResult = parse(userInput)
-          val extractedResult = parsedResult.extract[GraphInput]
-          val userName = extractedResult.user
-          val nodes = extractedResult.nodes
-          val links = extractedResult.links
-          logger.info("posting graph for user: " + userName)
-
-          if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else
-          {
-              try
-              {
-                  // println(cxn.isActive())
-                  // if (!cxn.isActive())
-                  // {
-                  //     graphDB.postUserGraph(userName, nodes, links, cxn)
-                  // }
-                  // else
-                  // {
-                  //    print("establishing new connection...")
-                      val local_cxn = GraphDbConnection.getNewDbConnection()
-                      graphDB.postUserGraph(userName, nodes, links, local_cxn)
-                      local_cxn.close()
-                  //}
-              }
-              catch
-              {
-                  case e: RuntimeException => 
-                  {
-                      e.printStackTrace()
-                      InternalServerError(Map("message" -> e.toString()))
-                  }
-              }
-          }
-      } 
-      catch 
-      {
-          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
-      }
+    try
+    {
+        val user = data("user").asInstanceOf[String]
+        assert (user != "", "User field is blank")
+        val pw = data("password").asInstanceOf[String]
+        assert (pw != "", "Password field is blank")
+        println("Received a checkUserCredentials request from user " + user)
+        val res = graphDB.checkUserCredentials(user, pw, cxn)
+        if (res == "Wrong Username") return Array("User \"" + user + "\" does not exist", user)
+        else if (res == "Wrong Password") return Array("Password incorrect for user \"" + user + "\"")
+        else return Array("Login Successful", user)
+     }
+     catch
+     {
+        case e: Throwable => {e.printStackTrace; return Array(e.toString)}
+     }
   }
 
-  post("/createNewUser")
+  def getUserGraph(data: Map[String,Object]): String =
   {
-      logger.info("Received a new user request")
-      try 
-      { 
-          val userInput = request.body
-          val extractedResult = parse(userInput).extract[LoginInfo]
-          val userName = extractedResult.user
-          val pw = extractedResult.password
-          print(userInput)
-          
-          if (userName.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else if (pw.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else
-          {
-              try
-              {
-                  val res = graphDB.createNewUser(userName, pw, cxn)
-                  if (res == "User exists")
-                  {
-                      val noContentMessage = "User \"" + userName + "\" already exists"
-                      NoContent(Map("message" -> noContentMessage))
-                  }
-                  else Ok(Map("message" -> res))
-              }
-              catch
-              {
-                  case e: RuntimeException => 
-                  {
-                      e.printStackTrace()
-                      InternalServerError(Map("message" -> e.toString()))
-                  }
-              }
-          }
-      } 
-      catch 
-      {
-          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
-      }
+     try
+     {
+       val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
+       println("Received a getUserGraph request from user " + user)
+       val local_cxn = GraphDbConnection.getNewDbConnection()
+       val graphres = graphDB.getUserGraphNoPassword(user, cxn)
+       local_cxn.close()
+       return graphres
+     }
+     catch
+     {
+        case e: Throwable => {e.printStackTrace; return e.toString}
+     }
   }
 
-  get("/getAllConcepts")
+  def createNewUser(data: Map[String,Object]): String =
   {
-      logger.info("Received a get request")
-      try
-      {
-          graphDB.getAllConcepts(cxn)
-      }
-      catch
-      {
-          case e: RuntimeException => 
-          {
-              e.printStackTrace()
-              InternalServerError(Map("message" -> e.toString()))
-          }
-      }
+    try
+     {
+       val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
+       val pw = data("password").asInstanceOf[String]
+       assert (pw != "", "Password field is blank")
+       println("Received a createNewUser request from user " + user)
+       val local_cxn = GraphDbConnection.getNewDbConnection()
+       val graphres = graphDB.createNewUser(user, pw, cxn)
+       local_cxn.close()
+       return graphres
+     }
+     catch
+     {
+        case e: Throwable => {e.printStackTrace; return e.toString}
+     }
   }
 
-  post("/getAllNodeConnections")
+  def postRemoveLink(data: Map[String,Object])
   {
-      logger.info("Received a post request")
-      try 
-      { 
-          val userInput = request.body
-          logger.info("received: " + userInput)
-          val extractedResult = parse(userInput).extract[NodeInput]
-          val node = extractedResult.node
-          logger.info("getting links for node: " + node)
-
-          if (node.size == 0) BadRequest(Map("message" -> "Unable to parse JSON"))
-          else
-          {
-              try
-              {
-                  graphDB.getAllNodeConnections(node, cxn)
-              }
-              catch
-              {
-                  case e: RuntimeException => 
-                  {
-                      e.printStackTrace()
-                      InternalServerError(Map("message" -> e.toString()))
-                  }
-              }
-          }
-      } 
-      catch 
-      {
-          case e1: JsonParseException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e2: MappingException => BadRequest(Map("message" -> "Unable to parse JSON"))
-          case e3: JsonMappingException => BadRequest(Map("message" -> "Did not receive any content in the request body"))
-      }
+     try
+     {
+       val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
+       val origin = data("origin").asInstanceOf[String]
+       assert (origin != "", "Origin field is blank")
+       val target = data("target").asInstanceOf[String]
+       assert (target != "", "Target field is blank")
+       val label = data("label").asInstanceOf[String]
+       assert (label != "", "Label field is blank")
+       println("Received a postRemoveLink request from user " + user)
+       val local_cxn = GraphDbConnection.getNewDbConnection()
+       graphDB.postRemoveLink(user,origin,target,label,local_cxn)
+       local_cxn.close()
+     }
+     catch
+     {
+        case e: Throwable => e.printStackTrace
+     }
   }
 
-  get("/getGraphStatistics")
+  def postRemoveNode(data: Map[String,Object])
   {
-      logger.info("Received a get request")
-      try
-      {
-          graphDB.getGraphStatistics(cxn)
-      }
-      catch
-      {
-          case e: RuntimeException => 
-          {
-              e.printStackTrace()
-              InternalServerError(Map("message" -> e.toString()))
-          }
-      }
+     try
+     {
+       val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
+       val node = data("node").asInstanceOf[String]
+       assert (node != "", "Node field is blank")
+       println("Received a postRemoveNode request from user " + user)
+       val local_cxn = GraphDbConnection.getNewDbConnection()
+       graphDB.postRemoveNode(user,node,local_cxn)
+       local_cxn.close()
+     }
+     catch
+     {
+        case e: Throwable => e.printStackTrace
+     }
+  }
+
+  def postChangeLink(data: Map[String,Object])
+  {
+     try
+     {
+       val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
+       val origin = data("origin").asInstanceOf[String]
+       assert (origin != "", "Origin field is blank")
+       val target = data("target").asInstanceOf[String]
+       assert (target != "", "Target field is blank")
+       val oldLabel = data("oldLabel").asInstanceOf[String]
+       assert (oldLabel != "", "oldLabel field is blank")
+       val newLabel = data("newLabel").asInstanceOf[String]
+       assert (newLabel != "", "newLabel field is blank")
+       var citation = ""
+        if (data.contains("citation"))
+        {
+           citation = data("citation").asInstanceOf[String]
+           assert (citation != "", "Citation field is blank")
+        }
+       println("Received a postChangeLink request from user " + user)
+       val local_cxn = GraphDbConnection.getNewDbConnection()
+       graphDB.postChangeLink(user,origin,target,oldLabel,newLabel,citation,local_cxn)
+       local_cxn.close()
+     }
+     catch
+     {
+        case e: Throwable => e.printStackTrace
+     }
+  }
+
+  def postChangeNode(data: Map[String,Object])
+  {
+     try
+     {
+       val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
+       val oldNode = data("oldNode").asInstanceOf[String]
+       assert (oldNode != "", "oldNode field is blank")
+       val newNode = data("newNode").asInstanceOf[String]
+       assert (newNode != "", "newNode field is blank")
+       println("Received a postChangeNode request from user " + user)
+       val local_cxn = GraphDbConnection.getNewDbConnection()
+       graphDB.postChangeNode(user,oldNode,newNode,local_cxn)
+       local_cxn.close()
+     }
+     catch
+     {
+        case e: Throwable => e.printStackTrace
+     }
+  }
+
+  def postAddNode(data: Map[String,Object])
+  {
+     try
+     {
+       val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
+       val node = data("node").asInstanceOf[String]
+       assert (node != "", "Node field is blank")
+       val xpos = data("xpos").asInstanceOf[String]
+       assert (xpos != "", "Xpos field is blank")
+       val ypos = data("ypos").asInstanceOf[String]
+       assert (ypos != "", "Ypos field is blank")
+       println("Received a postAddNode request from user " + user)
+       val local_cxn = GraphDbConnection.getNewDbConnection()
+       graphDB.postAddNode(user,node,xpos,ypos,local_cxn)
+       local_cxn.close()
+     }
+     catch
+     {
+        case e: Throwable => e.printStackTrace
+     }
+  }
+
+error {
+    case t: Throwable => t.printStackTrace()
+  }
+
+  notFound {
+    // remove content type in case it was set through an action
+    contentType = null
+    // Try to render a ScalateTemplate if no route matched
+    findTemplate(requestPath) map { path =>
+      contentType = "text/html"
+      layoutTemplate(path)
+    } orElse serveStaticResource() getOrElse resourceNotFound()
   }
 }
