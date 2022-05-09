@@ -56,6 +56,7 @@ class ScalatraBootstrap extends LifeCycle {
     GraphDbConnection.setDbConnection(dbCxn)
 
     println("established connection to repository "+ repoName)
+    context.initParameters("org.scalatra.ForceHttps") = "true"
     context.mount(new DashboardServlet, "/*")
     println("""
 

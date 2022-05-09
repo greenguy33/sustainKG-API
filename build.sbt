@@ -22,3 +22,7 @@ libraryDependencies ++= Seq(
 )
 
 enablePlugins(ScalatraPlugin)
+enablePlugins(JettyPlugin)
+//enablePlugins(TomcatPlugin)
+
+containerArgs := Seq("--config", "jetty.xml")
