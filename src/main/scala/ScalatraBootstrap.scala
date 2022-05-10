@@ -38,7 +38,7 @@ class ScalatraBootstrap extends LifeCycle {
     //val password = getFromProperties("password")
     val password = "thetube33"
     //val repoName = getFromProperties("repoName")
-    val repoName = "test"
+    val repoName = "kg1"
     println("repository: "+ repoName)
     val dbRepoManager = new RemoteRepositoryManager(serviceUrl)
     println("initialized repository manager")

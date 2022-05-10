@@ -82,6 +82,7 @@ class DashboardServlet extends ScalatraServlet
                     case "removeNode" => {postRemoveNode(extractedResult.data); broadcast(json)}
                     case "changeNode" => {postChangeNode(extractedResult.data); broadcast(json)}
                     case "addNode" => {postAddNode(extractedResult.data); broadcast(json)}
+                    case "addVote" => {postAddVote(extractedResult.data); broadcast(json)}
                     case "checkUserCredentials" => {
                         val res = checkUserCredentials(extractedResult.data)
                         send(res(0))
@@ -320,6 +321,45 @@ class DashboardServlet extends ScalatraServlet
        println("Received a postAddNode request from user " + user)
        val local_cxn = GraphDbConnection.getNewDbConnection()
        graphDB.postAddNode(user,node,xpos,ypos,local_cxn)
+       local_cxn.close()
+     }
+     catch
+     {
+        case e: Throwable => e.printStackTrace
+     }
+  }
+
+error {
+    case t: Throwable => t.printStackTrace()
+  }
+
+  notFound {
+    // remove content type in case it was set through an action
+    contentType = null
+    // Try to render a ScalateTemplate if no route matched
+    findTemplate(requestPath) map { path =>
+      contentType = "text/html"
+      layoutTemplate(path)
+    } orElse serveStaticResource() getOrElse resourceNotFound()
+  }
+
+  def postAddVote(data: Map[String,Object])
+  {
+     try
+     {
+       val user = data("user").asInstanceOf[String]
+       assert (user != "", "User field is blank")
+       val origin = data("origin").asInstanceOf[String]
+       assert (origin != "", "Origin field is blank")
+       val target = data("target").asInstanceOf[String]
+       assert (target != "", "Target field is blank")
+       val label = data("label").asInstanceOf[String]
+       assert (label != "", "Label field is blank")
+       val voteCount = data("voteCount").asInstanceOf[String]
+       assert (voteCount != "", "voteCount field is blank")
+       println("Received a postVote request from user " + user)
+       val local_cxn = GraphDbConnection.getNewDbConnection()
+       graphDB.postVote(user,origin,target,label,voteCount,local_cxn)
        local_cxn.close()
      }
      catch

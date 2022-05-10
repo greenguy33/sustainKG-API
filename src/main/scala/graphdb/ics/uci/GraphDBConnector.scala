@@ -53,6 +53,7 @@ class GraphDBConnector
         // map to group account
         if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
         val query = s"select * where { graph <http://sustainkg.org/$safeUser> { ?s ?p ?o . }}"
+        println(query)
         val tupleQueryResult = cxn.prepareTupleQuery(QueryLanguage.SPARQL, query).evaluate()
         val results = new ArrayBuffer[ArrayBuffer[String]]
         while (tupleQueryResult.hasNext())
@@ -126,7 +127,7 @@ class GraphDBConnector
                             <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/x_coord>?xpos.
                             <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/y_coord>?ypos.
                         }}"""
-            println(query)
+            //println(query)
             val tupleUpdate = cxn.prepareUpdate(QueryLanguage.SPARQL, query)
             tupleUpdate.execute()
             cxn.commit()
@@ -171,8 +172,8 @@ class GraphDBConnector
                     WHERE{GRAPH<http://sustainkg.org/$safeUser>{
                             ?s ?p <https://en.wikipedia.org/wiki/$safeOldNode>.
                         }}"""
-            println(changeSubjects)
-            println(changeObjects)
+            //println(changeSubjects)
+            //println(changeObjects)
             cxn.prepareUpdate(QueryLanguage.SPARQL, changeSubjects).execute()
             cxn.prepareUpdate(QueryLanguage.SPARQL, changeObjects).execute()
             cxn.commit()
@@ -215,8 +216,8 @@ class GraphDBConnector
                             ?s ?p <https://en.wikipedia.org/wiki/$safeNode>.
                             optional{?p ?p1 ?o2 .}
                         }}"""
-            println(removeSubjects)
-            println(removeObjects)
+            //println(removeSubjects)
+            //println(removeObjects)
             cxn.prepareUpdate(QueryLanguage.SPARQL, removeSubjects).execute()
             cxn.prepareUpdate(QueryLanguage.SPARQL, removeObjects).execute()
             cxn.commit()
@@ -253,7 +254,7 @@ class GraphDBConnector
                             ?p <http://sustainkg.org/label> <http://sustainkg.org/$safeLabel>.
                             ?p ?p1 ?o .
                         }}"""
-            println(removeLink)
+            //println(removeLink)
             cxn.prepareUpdate(QueryLanguage.SPARQL, removeLink).execute()
             cxn.commit()
         }
@@ -296,7 +297,7 @@ class GraphDBConnector
                             <https://en.wikipedia.org/wiki/$safeOrigin> ?p <https://en.wikipedia.org/wiki/$safeTarget>.
                             ?p <http://sustainkg.org/label> <http://sustainkg.org/$safeOldLabel>.
                         }}"""
-            println(changeLink)
+            //println(changeLink)
             cxn.prepareUpdate(QueryLanguage.SPARQL, changeLink).execute()
             cxn.commit()
         }
@@ -332,9 +333,10 @@ class GraphDBConnector
                 s"""INSERT DATA{GRAPH<http://sustainkg.org/$safeUser>{
                             <https://en.wikipedia.org/wiki/$safeOrigin><http://sustainkg.org/$uniqueId><https://en.wikipedia.org/wiki/$safeTarget>.
                             <http://sustainkg.org/$uniqueId><http://sustainkg.org/label><http://sustainkg.org/$safeLabel>.
+                            <http://sustainkg.org/$uniqueId><http://sustainkg.org/vote><http://sustainkg.org/0>.
                             $citationRdf
                         }}"""
-            println(addLink)
+            //println(addLink)
             cxn.prepareUpdate(QueryLanguage.SPARQL, addLink).execute()
             cxn.commit()
         }
@@ -357,13 +359,51 @@ class GraphDBConnector
         cxn.begin()
         try
         {
-            val addLink = 
+            val addNode = 
                 s"""INSERT DATA{GRAPH<http://sustainkg.org/$safeUser>{
                             <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/x_coord><http://sustainkg.org/$xpos>.
                             <https://en.wikipedia.org/wiki/$safeNode><http://sustainkg.org/y_coord><http://sustainkg.org/$ypos>.
                         }}"""
-            println(addLink)
-            cxn.prepareUpdate(QueryLanguage.SPARQL, addLink).execute()
+            //println(addNode)
+            cxn.prepareUpdate(QueryLanguage.SPARQL, addNode).execute()
+            cxn.commit()
+        }
+        catch
+        {
+            case e: Throwable => 
+            {
+                cxn.rollback()
+                throw new Throwable(e)
+            }
+        }
+    }
+
+    def postVote(user:String,origin:String,target:String,label:String,vote:String,cxn: RepositoryConnection)
+    {
+        var safeUser = user.replace(" ","_").replace("<","").replace(">","")
+        val safeOrigin = removeIllegalCharacters(origin)
+        val safeTarget = removeIllegalCharacters(target)
+        val safeLabel = removeIllegalCharacters(label)
+
+        // map to group account
+        if (groupMap.contains(safeUser)) safeUser = groupMap(safeUser)
+        cxn.begin()
+        try
+        {
+            val addVote = 
+            s"""DELETE{GRAPH<http://sustainkg.org/$safeUser>{
+                        ?p <http://sustainkg.org/vote> ?oldVote .
+                    }}
+                INSERT{GRAPH<http://sustainkg.org/$safeUser>{
+                        ?p <http://sustainkg.org/vote> <http://sustainkg.org/$vote>.
+                    }}
+                WHERE{GRAPH<http://sustainkg.org/$safeUser>{
+                        <https://en.wikipedia.org/wiki/$safeOrigin> ?p <https://en.wikipedia.org/wiki/$safeTarget>.
+                        ?p <http://sustainkg.org/label> <http://sustainkg.org/$safeLabel>.
+                        ?p <http://sustainkg.org/vote> ?oldVote.
+                    }}"""
+            //println(addVote)
+            cxn.prepareUpdate(QueryLanguage.SPARQL, addVote).execute()
             cxn.commit()
         }
         catch
