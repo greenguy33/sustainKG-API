@@ -333,7 +333,8 @@ class GraphDBConnector
                 s"""INSERT DATA{GRAPH<http://sustainkg.org/$safeUser>{
                             <https://en.wikipedia.org/wiki/$safeOrigin><http://sustainkg.org/$uniqueId><https://en.wikipedia.org/wiki/$safeTarget>.
                             <http://sustainkg.org/$uniqueId><http://sustainkg.org/label><http://sustainkg.org/$safeLabel>.
-                            <http://sustainkg.org/$uniqueId><http://sustainkg.org/vote><http://sustainkg.org/0>.
+                            <http://sustainkg.org/$uniqueId><http://sustainkg.org/posVote><http://sustainkg.org/0>.
+                            <http://sustainkg.org/$uniqueId><http://sustainkg.org/negVote><http://sustainkg.org/0>.
                             $citationRdf
                         }}"""
             //println(addLink)
@@ -378,7 +379,7 @@ class GraphDBConnector
         }
     }
 
-    def postVote(user:String,origin:String,target:String,label:String,vote:String,cxn: RepositoryConnection)
+    def postVote(user:String,origin:String,target:String,label:String,posVote:String,negVote:String,cxn: RepositoryConnection)
     {
         var safeUser = user.replace(" ","_").replace("<","").replace(">","")
         val safeOrigin = removeIllegalCharacters(origin)
@@ -392,15 +393,18 @@ class GraphDBConnector
         {
             val addVote = 
             s"""DELETE{GRAPH<http://sustainkg.org/$safeUser>{
-                        ?p <http://sustainkg.org/vote> ?oldVote .
+                        ?p <http://sustainkg.org/posVote> ?oldPosVote.
+                        ?p <http://sustainkg.org/negVote> ?oldNegVote.
                     }}
                 INSERT{GRAPH<http://sustainkg.org/$safeUser>{
-                        ?p <http://sustainkg.org/vote> <http://sustainkg.org/$vote>.
+                        ?p <http://sustainkg.org/posVote> <http://sustainkg.org/$posVote>.
+                        ?p <http://sustainkg.org/negVote> <http://sustainkg.org/$negVote>.
                     }}
                 WHERE{GRAPH<http://sustainkg.org/$safeUser>{
                         <https://en.wikipedia.org/wiki/$safeOrigin> ?p <https://en.wikipedia.org/wiki/$safeTarget>.
                         ?p <http://sustainkg.org/label> <http://sustainkg.org/$safeLabel>.
-                        ?p <http://sustainkg.org/vote> ?oldVote.
+                        ?p <http://sustainkg.org/posVote> ?oldPosVote.
+                        ?p <http://sustainkg.org/negVote> ?oldNegVote.
                     }}"""
             //println(addVote)
             cxn.prepareUpdate(QueryLanguage.SPARQL, addVote).execute()
