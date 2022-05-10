@@ -355,10 +355,10 @@ error {
        assert (target != "", "Target field is blank")
        val label = data("label").asInstanceOf[String]
        assert (label != "", "Label field is blank")
-       val posVoteCount = data("posVoteCount").asInstanceOf[String]
-       assert (posVoteCount != "", "posVoteCount field is blank")
-       val negVoteCount = data("negVoteCount").asInstanceOf[String]
-       assert (negVoteCount != "", "negVoteCount field is blank")
+       val posVoteCount = data("posVote").asInstanceOf[String]
+       assert (posVoteCount != "", "posVote field is blank")
+       val negVoteCount = data("negVote").asInstanceOf[String]
+       assert (negVoteCount != "", "negVote field is blank")
        println("Received a postVote request from user " + user)
        val local_cxn = GraphDbConnection.getNewDbConnection()
        graphDB.postVote(user,origin,target,label,posVoteCount,negVoteCount,local_cxn)
