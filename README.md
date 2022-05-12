@@ -53,81 +53,23 @@ docker-compose up
 
 This runs `sbt ~"jetty:start"` in the context of a docker container.  May take several minutes to compile.
 
-## Commands
-
-The API currently supports the following commands:
-
-POST to `/getUserGraph`: accepts a username/password as a JSON formatted string and returns JSON graph data of that user's graph
-
-Example body: 
+### Running with HTTPS
+By default, HTTPS is enabled in the build.sbt file, which means you need to configure certificates. HTTPS can also be disabled by commenting the following two lines in build.sbt:
 
 ```
-{
-    "user": "some_user",
-    "password": "my_password"
-}
+enablePlugins(JettyPlugin)
+containerArgs := Seq("--config", "jetty.xml")
 ```
 
-POST to `/postUserGraph`: accepts a username and JSON graph data and overwrites the user's existing graph with the new graph in the database.
+The port for HTTPS can be set in the file jetty.xml. This is also where the keystore information will be entered. To set up HTTPS, please follow the below steps which assume you already have a private key and certificate from a Certificate Authority. Make sure you keep the passwords that you set.
 
-Example body:
-
+1. Make a keypair
 ```
-{
-    "user": "some_user",
-    "nodes": [
-        {
-            "type": "node",
-            "id": "0",
-            "label": "Concept",
-            "properties": {
-                "name": "Innovation"
-            },
-	    "x":"23.975",
-	    "y":"-46.876"
-        },
-        {
-            "type": "node",
-            "id": "1",
-            "label": "Concept",
-            "properties": {
-                "name": "Globalization"
-            },
-	    "x":"63.209",
-	    "y":"-49.292"
-        }],
-    "links": [
-        {
-            "type": "link",
-            "id": "0",
-            "label": "benefits",
-            "source": "0",
-            "target": "1",
-            "citation": "www.mycitation.edu"
-        }
-    ]
-}
+openssl pkcs12 -export -in graphdb_ics_uci_edu_cert.cer -inkey graphdb.key -out pkcs.p12 -name keypairout
 ```
-
-POST to `/createNewUser`: accepts a username and password and creates a new user with an empty graph, if the username does not already exist. Note that a Code 200 will be returned if the request is accepted and a 204 code will be returned if the user already exists.
-
-Example body:
+2. Create the keystore and import the keypair
 ```
-{
-    "user": "some_user_2",
-    "password" : "my_password"
-}
+keytool -importkeystore -srckeystore sustainkg-keystore -destkeystore sustainkg-keystore -deststoretype pkcs12
 ```
-
-GET to `/getAllConcepts`: No body; returns a list of all concepts in the database in JSON format.
-
-POST to `/getAllNodeConnections`: accepts a node name and returns all incoming and outgoing connections to that node in JSON format.
-
-Example body:
-```
-{
-    "node":"Apple"
-}
-```
-
-GET to `/getGraphStatistics`: No body; returns a list of all user graphs as well as node and link counts.
+3. Update jetty.xml with the correct information for the following fields: KeyStorePath, KeyStorePassword, KeyManagerPassword, TrustStorePath, TrustStorePassword
+(note all paths/passwords can be the same that you set when you created the keystore)
