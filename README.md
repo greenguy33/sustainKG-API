@@ -65,7 +65,7 @@ The port for HTTPS can be set in the file jetty.xml. This is also where the keys
 
 1. Make a keypair
 ```
-openssl pkcs12 -export -in graphdb_ics_uci_edu_cert.cer -inkey graphdb.key -out pkcs.p12 -name keypairout
+openssl pkcs12 -export -in my_cert.cer -inkey my_key.key -out pkcs.p12 -name keypairout
 ```
 2. Create the keystore and import the keypair
 ```
