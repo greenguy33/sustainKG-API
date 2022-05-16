@@ -13,7 +13,7 @@ import org.eclipse.rdf4j.repository.RepositoryConnection
 import org.eclipse.rdf4j.repository.manager.RemoteRepositoryManager
 
 //class ScalatraBootstrap extends LifeCycle with DashboardProperties {
-class ScalatraBootstrap extends LifeCycle {
+class ScalatraBootstrap extends LifeCycle with DashboardProperties {
 
   override def destroy(context: ServletContext) 
   {
@@ -29,16 +29,12 @@ class ScalatraBootstrap extends LifeCycle {
   override def init(context: ServletContext) {
 
     println("connecting to graph db...")
-    //val serviceUrl = getFromProperties("serviceURL")
-    val serviceUrl = "http://graphdb.ics.uci.edu:7200/"
+    val serviceUrl = getFromProperties("serviceURL")
     println("serviceURL: "+ serviceUrl)
-    //val username = getFromProperties("username")
-    val username = "hfreedma"
+    val username = getFromProperties("username")
     println("username: " + username)
-    //val password = getFromProperties("password")
-    val password = "thetube33"
-    //val repoName = getFromProperties("repoName")
-    val repoName = "kg1"
+    val password = getFromProperties("password")
+    val repoName = getFromProperties("repoName")
     println("repository: "+ repoName)
     val dbRepoManager = new RemoteRepositoryManager(serviceUrl)
     println("initialized repository manager")
