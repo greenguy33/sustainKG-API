@@ -3,11 +3,11 @@
 
 <Configure id="Server" class="org.eclipse.jetty.server.Server">
   <New class="org.eclipse.jetty.util.ssl.SslContextFactory" id="sslfact">
-    <Set name="KeyStorePath"><Property name="jetty.home" default="." />/src/main/resources/jetty-ssl.keystore</Set>
-    <Set name="KeyStorePassword">GRZSkTqmDdz2Mc</Set>
-    <Set name="KeyManagerPassword">GRZSkTqmDdz2Mc</Set>
-    <Set name="TrustStorePath"><Property name="jetty.home" default="." />/src/main/resources/jetty-ssl.keystore</Set>
-    <Set name="TrustStorePassword">GRZSkTqmDdz2Mc</Set>
+    <Set name="KeyStorePath"><Property name="jetty.home" default="." />/sustainkg-keystore</Set>
+    <Set name="KeyStorePassword">mpPMu8Lt36h5hT</Set>
+    <Set name="KeyManagerPassword">mpPMu8Lt36h5hT</Set>
+    <Set name="TrustStorePath"><Property name="jetty.home" default="." />/sustainkg-keystore</Set>
+    <Set name="TrustStorePassword">mpPMu8Lt36h5hT</Set>
   </New>
   <Call name="addConnector">
     <Arg>
