@@ -44,11 +44,11 @@ API will be accessible on port 8080.
 ### Docker ###
 #### Build
 ```
-docker-compose build
+sudo docker build -t sustainkg-sbt .
 ```
 #### Run
 ```
-docker-compose up
+nohup sudo docker run --net sustainKGnetwork --ip 172.18.0.3 -p 8080:8080 --cap-add=NET_ADMIN sustainkg-sbt &> nohup_sustainkgsbt.out &
 ```
 
 This runs `sbt ~"jetty:start"` in the context of a docker container.  May take several minutes to compile.
